@@ -25,6 +25,11 @@ public class Computer
         "$temp"
     };
 
+    public Dictionary<string, int> labels { get; set; }
+
+    public int HIRegister { get; set; }
+    public int LORegister { get; set; }
+
     string[] Program;
 
 
@@ -32,13 +37,20 @@ public class Computer
     {
         InitializeRegisters();
 
+        labels = new Dictionary<string, int>();
+
         Instructions = new Instruction[]
         {
             //Arithmetic
             new add(),
             new addi(),
             new sub(),
+            new addu(),
+            new subu(),
+            new addiu(),
             new mul(),
+            new mult(),
+            new div(),
 
             //Logical
             new and(),
@@ -53,6 +65,10 @@ public class Computer
             new move(),
             new sw(),
             new lw(),
+            new lui(),
+            new mfhi(),
+            new mflo(),
+            new la(),
 
             //Control
             new j(),
@@ -170,7 +186,7 @@ public class Computer
             "syscall",
         };
     
-        ProcessFull();
+        //ProcessFull();
 
         //DumpMemory();
     }
@@ -223,6 +239,11 @@ public class Computer
     public void StoreMemory(int Value)
     {
         Memory[_memoryPointer++] = Value;
+    }
+
+    public int GetMemoryPointer()
+    {
+        return _memoryPointer;
     }
 
     bool StepProgram()

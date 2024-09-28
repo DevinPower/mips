@@ -22,6 +22,17 @@ public class li : Instruction
     }
 }
 
+public class lui : Instruction
+{
+    public void Execute(Computer Computer, params string[] Parameters)
+    {
+        int RegisterAddress = Computer.GetRegisterAddress(Parameters[0]);
+        int Value = Int16.Parse(Parameters[1]);
+
+        Computer.Registers[RegisterAddress] = (Value << 16) | (0 & 0xFFFF);
+    }
+}
+
 public class sw : Instruction
 {
     public void Execute(Computer Computer, params string[] Parameters)
@@ -48,6 +59,29 @@ public class la : Instruction
 {
     public void Execute(Computer Computer, params string[] Parameters)
     {
+        int RegisterAddress = Computer.GetRegisterAddress(Parameters[0]);
+        int Value = Int32.Parse(Parameters[1]);
 
+        Computer.Registers[RegisterAddress] = Value;
+    }
+}
+
+public class mfhi : Instruction
+{
+    public void Execute(Computer Computer, params string[] Parameters)
+    {
+        int RegisterAddress = Computer.GetRegisterAddress(Parameters[0]);
+
+        Computer.Registers[RegisterAddress] = Computer.HIRegister;
+    }
+}
+
+public class mflo : Instruction
+{
+    public void Execute(Computer Computer, params string[] Parameters)
+    {
+        int RegisterAddress = Computer.GetRegisterAddress(Parameters[0]);
+
+        Computer.Registers[RegisterAddress] = Computer.LORegister;
     }
 }
