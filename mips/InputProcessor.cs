@@ -7,12 +7,52 @@ using System.Threading.Tasks;
 
 namespace mips
 {
+    internal class LabelProcessor
+    {
+        string _processedLine;
+        public LabelProcessor(string Line) 
+        {
+            string[] SplitLine = Line.Split(new[] { ' ', ',', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+
+            if (SplitLine[0][SplitLine[0].Length - 1] == ':')
+            {
+                _processedLine = Line.Substring(SplitLine[0].Length, Line.Length - SplitLine[0].Length);
+            }
+            else
+            {
+                _processedLine = Line;
+            }
+        }
+
+        public string GetProcessedLine()
+        {
+            return _processedLine;
+        }
+    }
+
     internal class InputProcessor
     {
         int _result;
+        bool _isop = false;
+        string _op;
+
         public InputProcessor(string Line, List<SoftOperationWrapper> AllOperations)
         {
             string[] SplitLine = Line.Split(new[] { ' ', ',', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+
+            if (SplitLine[0][SplitLine[0].Length - 1] == ':')
+            {
+                //label, reprocess split
+                SplitLine = Line.Substring(SplitLine[0].Length, Line.Length - SplitLine[0].Length).Split(new[] { ' ', ',', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+            }
+
+            if (SplitLine[0][0] == '.')
+            {
+                _isop = true;
+                _op = SplitLine[0].Remove(0, 1);
+                return;
+            }
+            
             List<InputInstruction> Input = AllOperations.First((x) => x.OperationName == SplitLine[0]).inputInstructions.ToList();
 
             Input.Reverse();
@@ -28,7 +68,6 @@ namespace mips
             {
                 int processResult = actions[(int)item.InstructionName].Invoke(SplitLine, item.InstructionValue, item.Length);
 
-                Console.WriteLine($"PR: {processResult}");
                 int mask = ((1 << item.Length) - 1) << pointer;
 
                 Result &= ~mask;
@@ -43,6 +82,14 @@ namespace mips
             ////Console.WriteLine(binary);
             WriteStringSeparations(binary);
             _result = Result;
+        }
+
+        public string GetOp()
+        {
+            if (!_isop)
+                return "";
+
+            return _op;
         }
 
         public int GetResult()
@@ -68,7 +115,7 @@ namespace mips
 
         int ReadRegister(string[] FullLine, string RegisterValue, int Length) 
         {
-            int ParameterPosition = Int32.Parse(RegisterValue);
+            int ParameterPosition = Int32.Parse(RegisterValue) + 1;
             Console.WriteLine("Lookup for " + FullLine[ParameterPosition]);
             return Computer.InstructionRegisterDefinitions.ToList().IndexOf(FullLine[ParameterPosition]);
         }

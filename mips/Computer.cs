@@ -155,7 +155,13 @@ public class Computer
         op7.LoadOperations();
 
         OP_001110 op8 = new OP_001110();
-        op8.LoadOperations();
+        op8.LoadOperations(); 
+        
+        OP_100000 op9 = new OP_100000();
+        op9.LoadOperations();
+
+        OP_101000 op10 = new OP_101000();
+        op10.LoadOperations();
 
         InstructionProcessors.Add(0, op0);
         InstructionProcessors.Add(8, op1);
@@ -166,6 +172,8 @@ public class Computer
         InstructionProcessors.Add(10, op6);
         InstructionProcessors.Add(11, op7);
         InstructionProcessors.Add(14, op8);
+        InstructionProcessors.Add(32, op9);
+        InstructionProcessors.Add(40, op10);
 
     }
 
@@ -207,13 +215,53 @@ public class Computer
     public int[] Compile(string[] Program)
     {
         var ops = GetAllInstructions();
-        List<int> result = new List<int>();
+        int i = -1;
+
+        List<string> processedLabels = new List<string>();
+
         foreach (string Line in Program)
         {
+            LabelProcessor lp = new LabelProcessor(Line);
+            processedLabels.Add(lp.GetProcessedLine());
+        }
+
+        List<int> result = new List<int>();
+
+
+        foreach (string Line in processedLabels)
+        {
+            i++;
             InputProcessor ip = new InputProcessor(Line, ops);    //TODO: This will be heavy on GC
+            
+            if (ip.GetOp() != "")
+            {
+                ProcessOp(ip.GetOp(), i, Line);
+                continue;
+            }
+
             result.Add(ip.GetResult());
         }
         return result.ToArray();
+    }
+
+    public void ProcessOp(string op, int ipResult, string Line)
+    {
+        string[] SplitLine = Line.Split(new[] { ' ', ',', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+
+        string LineRemainder = String.Join(" ", SplitLine.Skip(1));
+        switch (op)
+        {
+            case "data":
+                Jump(ipResult);
+                break;
+            case "asciiz":
+                foreach(char c in LineRemainder)
+                {
+                    StoreMemory((int)c);
+                }
+                StoreMemory(0);
+                break;
+        }
     }
 
     void DumpMemory()

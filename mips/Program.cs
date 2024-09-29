@@ -30,13 +30,24 @@ string[] Program = new string[]
 
 string[] OpTest = new[]
 {
+    "LABUL: .asciiz Hello, world!",
+    "Syscall",
+    "Syscall",
+    "Syscall",
+    "Syscall",
+    "Syscall",
+    "Syscall",
+    "Syscall",
+    ".data",
     "Addi $t0, $t0, 123",
-    "Syscall"
+    "Addi $t1, $t0, 4",
+    "Addi $t0, $t0, 40"
+    //"Syscall"
     //"Syscall"
     //"Jr $t5"
 };
 
-Computer c = new Computer(64);
+Computer c = new Computer(128);
 var compiled = c.Compile(OpTest);
 
 foreach (var item in compiled)
