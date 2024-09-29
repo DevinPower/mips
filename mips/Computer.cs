@@ -1,16 +1,17 @@
+using mips;
+using mips.Instructions;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 
 public class Computer
 {
-    public int[] Memory = new int[64];
-    int _memoryPointer = 0;
-    public int[] Registers = new int[32];
-    public static Instruction[] Instructions;
+    public int[] Memory { get; set; }
+    int _memoryPointer = 33;
+
     Action[] _Syscall;
-    int _programCounter = 0;
-    string[] InstructionRegisterDefinitions = new[] {
+    int _programCounter = 33;
+    public static string[] InstructionRegisterDefinitions = new[] {
         "$zero",
         "$a0",
         "$v0", "$v1",
@@ -25,68 +26,15 @@ public class Computer
         "$temp"
     };
 
-    public Dictionary<string, int> labels { get; set; }
-
     public int HIRegister { get; set; }
     public int LORegister { get; set; }
+    static Dictionary<int, Instruction> InstructionProcessors;
 
-    string[] Program;
-
-
-    public Computer()
+    public Computer(int MemorySize)
     {
+        Memory = new int[MemorySize];
         InitializeRegisters();
-
-        labels = new Dictionary<string, int>();
-
-        Instructions = new Instruction[]
-        {
-            //Arithmetic
-            new add(),
-            new addi(),
-            new sub(),
-            new addu(),
-            new subu(),
-            new addiu(),
-            new mul(),
-            new mult(),
-            new div(),
-
-            //Logical
-            new and(),
-            new or(),
-            new andi(),
-            new ori(),
-            new sll(),
-            new srl(),
-
-            //data transfer
-            new li(),
-            new move(),
-            new sw(),
-            new lw(),
-            new lui(),
-            new mfhi(),
-            new mflo(),
-            new la(),
-
-            //Control
-            new j(),
-            new jr(),
-            new jal(),
-            new slt(),
-            new slti(),
-            new beq(),
-            new bne(),
-            new bgt(),
-            new bge(),
-            new blt(),
-            new ble(),
-
-            new asciiz(),
-
-            new syscall()
-        };
+        LoadInstructionProcessors();
 
         _Syscall = new[]
         {
@@ -97,110 +45,24 @@ public class Computer
             Sys_Null, Sys_Null, Sys_Null, Sys_Null,
             Exit2
         };
-
-
-        //Print 22 to console
-        //Program = new string[]{
-        //    "li $a0 22",
-        //    "li $v0 1",
-        //    "syscall"
-        //};
-
-
-        //Read integer from user, print it back out
-        //Program = new string[]
-        //{
-        //    "li $v0 5",
-        //    "syscall",
-        //    "move $a0 $v0",
-        //    "li $v0 1",
-        //    "syscall"
-        //};
-
-        //Program = new string[]
-        //{
-        //    "asciiz \"Hello, world from computer!\"",
-        //    "li $a0 0",
-        //    "li $v0 4",
-        //    "syscall"
-        //};
-
-        //Read two integers, add together, print
-        //Program = new string[]
-        //{
-        //    "li $v0 5",
-        //    "syscall",
-        //    "move $t0 $v0",
-        //    "li $v0 5",
-        //    "syscall",
-        //    "move $t1 $v0",
-        //    "add $a0 $t0 $t1",
-        //    "li $v0 1",
-        //    "syscall"
-        //};
-
-        //Enter strings and print
-        //Program = new string[]
-        //{
-        //    //output the prompt
-        //    "asciiz \"Please enter a string!\"",
-        //    "li $a0 0",
-        //    "li $v0 4",
-        //    "syscall",
-        //
-        //    //get input
-        //    "li $a0 24",
-        //    "li $a1 255",   //255 = string legnth
-        //    "li $v0 8",
-        //    "syscall",
-        //
-        //    //write back the output
-        //    "li $a0 24",
-        //    "li $v0 4",
-        //    "syscall",
-        //    "j 1"           //loop
-        //};
-
-        Program = new string[]
-        {
-            //Instruction
-            "asciiz \"Please enter the number 10!\"",
-            "li $a0 0",        
-            "li $v0 4",
-            "syscall",
-
-            "li $t0 10",        //const for checking
-
-            //Read an integer
-            "li $v0 5",
-            "syscall",
-            "move $t1 $v0",
-
-            //check
-            "beq $t0 $t1 10",
-            "j 1",
-
-            "asciiz \":)\"",
-            "li $a0 28",
-            "li $v0 4",
-            "syscall",
-        };
-    
-        //ProcessFull();
-
-        //DumpMemory();
     }
 
-    void ProcessFull()
+    public void ProcessFull(int[] Program)
     {
+        foreach (int line in Program)
+        {
+            StoreMemory(line);
+        }
+
         int count = 0;
         while (!StepProgram()) count++;
         Console.WriteLine($"Finished program with {count} instructions!");
+        DumpMemory();
     }
 
     public void SysCall()
     {
-        _Syscall[Registers[GetRegisterAddress("$v0")]]();
+        _Syscall[Memory[GetRegisterAddress("$v0")]]();
     }
 
     public int GetProgramCounter()
@@ -231,9 +93,12 @@ public class Computer
 
     void InitializeRegisters()
     {
-        Registers[0] = 0;
-        Registers[28] = 0;
-        Registers[29] = 0;
+        Memory[0] = 5;
+        Memory[28] = 0;
+        Memory[29] = 0;
+
+        Console.WriteLine("Initialized $t5 to 13");
+        Memory[13] = 13;
     }
 
     public void StoreMemory(int Value)
@@ -248,39 +113,118 @@ public class Computer
 
     bool StepProgram()
     {
-        if (_programCounter >= Program.Length)
+        int CurrentLine = Memory[_programCounter++];
+        if (CurrentLine == 0)
+        {
             return true;
+        }
 
-        string[] Splits = Program[_programCounter++].Split(' ');
-        string Command = Splits[0];
-        string[] Arguments = Splits.Skip(1).ToArray();
-
-        int Instruction = GetInstructionIndex(Splits[0]);
-        Instructions[Instruction].Execute(this, Arguments);
+        int OpCode = (CurrentLine >> 26) & 0b111111;
+        Console.WriteLine(OpCode);
+        InstructionProcessors[OpCode].Execute(this, CurrentLine);
 
         return false;
     }
 
-    int GetInstructionIndex(string Instruction)
+    void LoadInstructionProcessors()
     {
-        //TODO: Refactor
-        for (int i = 0; i < Instructions.Length; i++)
+        InstructionProcessors = new Dictionary<int, Instruction>();
+        
+        OP_000000 op0 = new OP_000000();
+        op0.LoadOperations();
+
+        OP_001000 op1 = new OP_001000();
+        op1.LoadOperations();
+
+        OP_001001 op2 = new OP_001001();
+        op2.LoadOperations();
+
+        OP_001100 op3 = new OP_001100();
+        op3.LoadOperations();
+
+        OP_001111 op4 = new OP_001111();
+        op4.LoadOperations();
+
+        OP_001101 op5 = new OP_001101();
+        op5.LoadOperations();
+
+        OP_001010 op6 = new OP_001010();
+        op6.LoadOperations();
+
+        OP_001011 op7 = new OP_001011();
+        op7.LoadOperations();
+
+        OP_001110 op8 = new OP_001110();
+        op8.LoadOperations();
+
+        InstructionProcessors.Add(0, op0);
+        InstructionProcessors.Add(8, op1);
+        InstructionProcessors.Add(9, op2);
+        InstructionProcessors.Add(12, op3);
+        InstructionProcessors.Add(15, op4);
+        InstructionProcessors.Add(13, op5);
+        InstructionProcessors.Add(10, op6);
+        InstructionProcessors.Add(11, op7);
+        InstructionProcessors.Add(14, op8);
+
+    }
+
+    List<SoftOperationWrapper> GetAllInstructions()
+    {
+        List<SoftOperationWrapper> AllOperations = new List<SoftOperationWrapper>();
+
+        foreach(int key in InstructionProcessors.Keys)
         {
-            if (Instructions[i].GetType().Name == Instruction)
-                return i;
+            AllOperations.AddRange(InstructionProcessors[key].GetOperations());
         }
-        return -1;
+
+        return AllOperations;
+    }
+
+    /*public void Compile(string[] Program)
+    {
+        List<uint> CompiledProgram = new List<uint>();
+        foreach(string line in Program)
+        {
+            uint opCode = getOpCode(line.Split(' ')[0]);
+            uint command = uint.Parse(line.Split(' ')[1]);
+            uint compiledCode = (opCode << 26) | (command & 0x03FFFFFF);
+            CompiledProgram.Add(compiledCode);
+        }
+
+        foreach (var line in CompiledProgram)
+        {
+            string binary = Convert.ToString((int)line, 2).PadLeft(32, '0');
+
+            int[] result = HelperFunctions.BitsToInt((int)line, new[] { 6, 26 });
+            int op = result[0];
+            int tar = result[1];
+
+            Console.WriteLine($"{binary}\t{op}\t\t\t{tar}");
+        }
+    }*/
+
+    public int[] Compile(string[] Program)
+    {
+        var ops = GetAllInstructions();
+        List<int> result = new List<int>();
+        foreach (string Line in Program)
+        {
+            InputProcessor ip = new InputProcessor(Line, ops);    //TODO: This will be heavy on GC
+            result.Add(ip.GetResult());
+        }
+        return result.ToArray();
     }
 
     void DumpMemory()
     {
         Console.WriteLine("Registers: ");
         int i = 0;
-        foreach (var register in Registers)
-        {
-            Console.WriteLine($"{InstructionRegisterDefinitions[i]}\t\t\t\t{register.ToString()}");
-            i++;
-        }
+        //foreach (var register in Registers)
+        //{
+        //    Console.WriteLine($"{InstructionRegisterDefinitions[i]}\t\t\t\t{register.ToString()}");
+        //    i++;
+        //}
 
         Console.WriteLine("Memory: ");
 
@@ -288,6 +232,8 @@ public class Computer
         {
             Console.WriteLine(mem.ToString());
         }
+
+        Console.WriteLine($"Program Counter at: {_programCounter}");
     }
     #region SYSCALLS
     void Sys_Null()
@@ -297,7 +243,7 @@ public class Computer
 
     void Print_Int()
     {
-        Console.WriteLine(Registers[GetRegisterAddress("$a0")]);
+        //Console.WriteLine(Registers[GetRegisterAddress("$a0")]);
     }
 
     void Print_Float()
@@ -313,7 +259,7 @@ public class Computer
     void Print_String()
     {
         StringBuilder value = new StringBuilder();
-        int memoryPointer = Registers[GetRegisterAddress("$a0")];
+        int memoryPointer = Memory[GetRegisterAddress("$a0")];
 
         while (true)
         {
@@ -329,7 +275,7 @@ public class Computer
 
     void Read_Int()
     {
-        Registers[GetRegisterAddress("$v0")] = Int32.Parse(Console.ReadLine());
+        Memory[GetRegisterAddress("$v0")] = Int32.Parse(Console.ReadLine());
     }
 
     void Read_Float()
@@ -345,8 +291,8 @@ public class Computer
     void Read_String()
     {
         string str = Console.ReadLine();
-        int i = Registers[GetRegisterAddress("$a0")];
-        int max = Registers[GetRegisterAddress("$a1")] + i;
+        int i = Memory[GetRegisterAddress("$a0")];
+        int max = Memory[GetRegisterAddress("$a1")] + i;
 
         foreach(char c in str)
         {

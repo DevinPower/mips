@@ -25,7 +25,7 @@ namespace mips
 
         string asciiz(Computer Computer, string currentLine)
         {
-            //TODO: Process everything AFTER asciiz to support labels
+            /*//TODO: Process everything AFTER asciiz to support labels
             currentLine = currentLine.Replace(".asciiz ", "");
             int pointerStart = Computer.GetMemoryPointer();
             foreach (char c in HelperFunctions.ProcessString(currentLine))
@@ -34,12 +34,13 @@ namespace mips
             }
             Computer.StoreMemory(0);        //null terminator
 
-            return pointerStart.ToString();
+            return pointerStart.ToString();*/
+            return "";
         }
 
         string ascii(Computer Computer, string currentLine)
         {
-            //TODO: Process everything AFTER asciiz to support labels
+            /*//TODO: Process everything AFTER asciiz to support labels
             currentLine = currentLine.Replace(".ascii ", "");
             int pointerStart = Computer.GetMemoryPointer();
             foreach (char c in HelperFunctions.ProcessString(currentLine))
@@ -47,7 +48,8 @@ namespace mips
                 Computer.StoreMemory((int)c);
             }
 
-            return pointerStart.ToString();
+            return pointerStart.ToString();*/
+            return "";
         }
 
         string[] RunMemoryCommands(Computer Computer, string[] Program)

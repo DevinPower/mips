@@ -3,12 +3,12 @@
 string[] Program = new string[]
 {
             //Instruction
-            ".asciiz \"Please enter the number 10!\"",
-            "PROMPT: li $a0 0",
+            
+            "PROMPT: la $a0 MSG",
             "li $v0 4",
             "syscall",
 
-            "CHECK: li $t0 10",        //const for checking
+            "li $t0 10",        //const for checking
 
             //Read an integer
             "li $v0 5",
@@ -18,17 +18,29 @@ string[] Program = new string[]
             //check
             "beq $t0 $t1 10",
             "j PROMPT",
-
-            ".asciiz \":)\"",
-            "li $a0 28",
+            
+            "la $a0 SUCCESS",
             "li $v0 4",
             "syscall",
+
+            "MSG: asciiz \"Please enter the number 10!\"",
+            "SUCCESS: asciiz \":)\"",
 };
 
-Computer c = new Computer();
-string[] Result = new Compiler().Compile(c, Program);
 
-foreach(string s in Result)
+string[] OpTest = new[]
 {
-    Console.WriteLine(s);
+    "Addi $t0, $t0, 123",
+    "Syscall"
+    //"Syscall"
+    //"Jr $t5"
+};
+
+Computer c = new Computer(64);
+var compiled = c.Compile(OpTest);
+
+foreach (var item in compiled)
+{
+    Console.WriteLine(Convert.ToString((int)item, 2).PadLeft(32, '0'));
 }
+c.ProcessFull(compiled);
