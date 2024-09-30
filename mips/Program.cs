@@ -72,8 +72,25 @@ string[] PrintTest = new[]
     //""
 };
 
+string[] ReadStrTest = new[]
+{
+    "PROMPT: .asciiz Please enter 10",
+    "INPUT: .asciiz 0000000000000000000000000000000000000000",
+    ".data",
+    "Ori $v0, $zero, 4",
+    "LB $a0, PROMPT",
+    "Syscall",
+    "Ori $v0, $zero, 8",
+    "LB $a0, INPUT",
+    "LB $a1, 40",
+    "Syscall",
+    "Ori $v0, $zero, 4",
+    "Syscall",
+};
+
 Computer c = new Computer(4096);
-var compiled = c.Compile(PrintTest);
+var compiled = c.Compile(ReadStrTest);
+Console.WriteLine("processing");
 c.ProcessFull();
 
 //foreach (var item in compiled)

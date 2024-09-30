@@ -173,7 +173,6 @@ public class Computer
         InstructionProcessors.Add(14, op8);
         InstructionProcessors.Add(32, op9);
         InstructionProcessors.Add(40, op10);
-
     }
 
     List<SoftOperationWrapper> GetAllInstructions()
@@ -187,29 +186,6 @@ public class Computer
 
         return AllOperations;
     }
-
-    /*public void Compile(string[] Program)
-    {
-        List<uint> CompiledProgram = new List<uint>();
-        foreach(string line in Program)
-        {
-            uint opCode = getOpCode(line.Split(' ')[0]);
-            uint command = uint.Parse(line.Split(' ')[1]);
-            uint compiledCode = (opCode << 26) | (command & 0x03FFFFFF);
-            CompiledProgram.Add(compiledCode);
-        }
-
-        foreach (var line in CompiledProgram)
-        {
-            string binary = Convert.ToString((int)line, 2).PadLeft(32, '0');
-
-            int[] result = HelperFunctions.BitsToInt((int)line, new[] { 6, 26 });
-            int op = result[0];
-            int tar = result[1];
-
-            Console.WriteLine($"{binary}\t{op}\t\t\t{tar}");
-        }
-    }*/
 
     public int[] Compile(string[] Program)
     {
