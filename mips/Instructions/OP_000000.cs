@@ -206,7 +206,6 @@
 
         public void Execute(Computer Computer, int Instruction)
         {
-            Console.WriteLine("Executing instruction " + Instruction);
             //opcode, rs, rt, rd, shamt, funct
             int[] InstructionSplits = HelperFunctions.BitsToInt(Instruction, new int[] { 6, 5, 5, 5, 5, 6 });
             OperationWrapper<(Computer Computer, int rs, int rt, int rd, int sa)> operation = Operations.First((x) => x.Funct == InstructionSplits[0]);

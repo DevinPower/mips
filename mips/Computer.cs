@@ -47,17 +47,14 @@ public class Computer
         };
     }
 
-    public void ProcessFull(int[] Program)
+    public void ProcessFull()
     {
-        foreach (int line in Program)
-        {
-            StoreMemory(line);
-        }
-
+        Console.ForegroundColor = ConsoleColor.Yellow;
         int count = 0;
         while (!StepProgram()) count++;
+        Console.ForegroundColor = ConsoleColor.White;
         Console.WriteLine($"Finished program with {count} instructions!");
-        DumpMemory();
+        //DumpMemory();
     }
 
     public void SysCall()
@@ -93,12 +90,9 @@ public class Computer
 
     void InitializeRegisters()
     {
-        Memory[0] = 5;
+        Memory[0] = 0;
         Memory[28] = 0;
         Memory[29] = 0;
-
-        Console.WriteLine("Initialized $t5 to 13");
-        Memory[13] = 13;
     }
 
     public void StoreMemory(int Value)
@@ -126,7 +120,6 @@ public class Computer
         }
 
         int OpCode = (CurrentLine >> 26) & 0b111111;
-        Console.WriteLine(OpCode);
         InstructionProcessors[OpCode].Execute(this, CurrentLine);
 
         return false;
@@ -235,7 +228,7 @@ public class Computer
             result.Add(ip.ProcessLine(Line));
         }
 
-        ip.DumpLabels();
+        //ip.DumpLabels();
 
         return result.ToArray();
     }

@@ -30,7 +30,7 @@ string[] Program = new string[]
 
 string[] OpTest = new[]
 {
-    "LABUL: .asciiz Hello, worl!d",
+    "LABUL: .asciiz Hello, world!",
     "PROMT: .asciiz Enter a number?",
     "Syscall",
     "Syscall",
@@ -49,12 +49,36 @@ string[] OpTest = new[]
     //"Jr $t5"
 };
 
-Computer c = new Computer(128);
-var compiled = c.Compile(OpTest);
-
-foreach (var item in compiled)
+string[] LabelTest = new[]
 {
-    Console.WriteLine(Convert.ToString((int)item, 2).PadLeft(32, '0'));
-}
+    "LABELT: Addi $t0, $t0, 3"
+};
+
+string[] PrintTest = new[]
+{
+    "TEXT: .asciiz Hello, world from my string!",
+    "TEXT2: .asciiz This is my second string",
+    "PROMPT: .asciiz Please enter a string!",
+    ".data",
+    "Ori $v0, $zero, 4",
+    "LB $a0, TEXT",
+    "Syscall",
+    "LB $a0, TEXT2",
+    "Syscall",
+    "LB $a0, PROMPT",
+    "Syscall"
+    //"",
+    //"",
+    //""
+};
+
+Computer c = new Computer(4096);
+var compiled = c.Compile(PrintTest);
+c.ProcessFull();
+
+//foreach (var item in compiled)
+//{
+//    Console.WriteLine(Convert.ToString((int)item, 2).PadLeft(32, '0'));
+//}
 //c.ProcessFull(compiled);
 c.DumpMemory();

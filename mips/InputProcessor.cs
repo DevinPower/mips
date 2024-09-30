@@ -11,7 +11,7 @@ namespace mips
     {
         List<SoftOperationWrapper> AllOperations;
         Computer Owner;
-        int addressPointer = 33;
+        int addressPointer = 32;
         Dictionary<string, int> LabelPositions = new Dictionary<string, int>();
         List<int> ValidCommandLines = new List<int>();
         int WriteCommandLine = 0;
@@ -29,7 +29,7 @@ namespace mips
             if (SplitLine[0][SplitLine[0].Length - 1] == ':')
             {
                 string LabelName = SplitLine[0].Remove(SplitLine[0].Length - 1, 1);
-                Line = Line.Substring(SplitLine[0].Length, Line.Length - SplitLine[0].Length);
+                Line = Line.Substring(SplitLine[0].Length + 1, Line.Length - SplitLine[0].Length - 1);
                 SplitLine = Line.Split(new[] { ' ', ',', '\t' }, StringSplitOptions.RemoveEmptyEntries);
                 LabelPositions.Add(LabelName, addressPointer);
             }
@@ -131,13 +131,18 @@ namespace mips
                 return LabelPositions[FullLine[ParameterPosition]];
             }
 
-            Console.WriteLine("Lookup for " + FullLine[ParameterPosition]);
             return Computer.InstructionRegisterDefinitions.ToList().IndexOf(FullLine[ParameterPosition]);
         }
 
         int ReadImmediate(string[] FullLine, string ImmediateValue, int Length)
         {
             int ParameterPosition = Int32.Parse(ImmediateValue);
+
+            if (LabelPositions.ContainsKey(FullLine[ParameterPosition + 1]))
+            {
+                return LabelPositions[FullLine[ParameterPosition + 1]];
+            }
+
             return Convert.ToInt32(FullLine[ParameterPosition + 1]);
         }
     }

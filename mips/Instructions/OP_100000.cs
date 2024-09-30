@@ -25,7 +25,7 @@
 
         static void LB((Computer Computer, int rs, int rt, int offset) passedArgs)
         {
-            passedArgs.Computer.Memory[passedArgs.rt] = passedArgs.Computer.Memory[passedArgs.rs + passedArgs.offset];
+            passedArgs.Computer.Memory[passedArgs.rt] = passedArgs.rs + passedArgs.offset;
         }
 
         public void Execute(Computer Computer, int Instruction) 
