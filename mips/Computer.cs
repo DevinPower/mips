@@ -22,8 +22,8 @@ public class Computer
         "$k0", "$k1",
         "$gp",
         "$sp",
-        "$ra",
-        "$temp"
+        "$fp",
+        "$ra"
     };
 
     public int HIRegister { get; set; }
@@ -104,6 +104,12 @@ public class Computer
     public void StoreMemory(int Value)
     {
         Memory[_memoryPointer++] = Value;
+    }
+
+    //TODO: Not sure I like exposing this...
+    public void StoreMemory(int Value, int Position)
+    {
+        Memory[Position] = Value;
     }
 
     public int GetMemoryPointer()
@@ -215,32 +221,22 @@ public class Computer
     public int[] Compile(string[] Program)
     {
         var ops = GetAllInstructions();
-        int i = -1;
 
-        List<string> processedLabels = new List<string>();
+        List<int> result = new List<int>();
+        InputProcessor ip = new InputProcessor(this, ops);
 
         foreach (string Line in Program)
         {
-            LabelProcessor lp = new LabelProcessor(Line);
-            processedLabels.Add(lp.GetProcessedLine());
+            ip.FindLabels(Line);
         }
 
-        List<int> result = new List<int>();
-
-
-        foreach (string Line in processedLabels)
+        foreach (string Line in Program)
         {
-            i++;
-            InputProcessor ip = new InputProcessor(Line, ops);    //TODO: This will be heavy on GC
-            
-            if (ip.GetOp() != "")
-            {
-                ProcessOp(ip.GetOp(), i, Line);
-                continue;
-            }
-
-            result.Add(ip.GetResult());
+            result.Add(ip.ProcessLine(Line));
         }
+
+        ip.DumpLabels();
+
         return result.ToArray();
     }
 
@@ -264,7 +260,7 @@ public class Computer
         }
     }
 
-    void DumpMemory()
+    public void DumpMemory()
     {
         Console.WriteLine("Registers: ");
         int i = 0;
@@ -275,10 +271,12 @@ public class Computer
         //}
 
         Console.WriteLine("Memory: ");
+        int ind = 0;
 
         foreach (var mem in Memory)
         {
-            Console.WriteLine(mem.ToString());
+            Console.WriteLine($"{ind.ToString().PadLeft(4, '0')}\t{((char)mem).ToString().Trim()}\t{mem.ToString()}");
+            ind++;
         }
 
         Console.WriteLine($"Program Counter at: {_programCounter}");

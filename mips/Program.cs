@@ -30,8 +30,8 @@ string[] Program = new string[]
 
 string[] OpTest = new[]
 {
-    "LABUL: .asciiz Hello, world!",
-    "Syscall",
+    "LABUL: .asciiz Hello, worl!d",
+    "PROMT: .asciiz Enter a number?",
     "Syscall",
     "Syscall",
     "Syscall",
@@ -39,9 +39,11 @@ string[] OpTest = new[]
     "Syscall",
     "Syscall",
     ".data",
-    "Addi $t0, $t0, 123",
+    "PROGSTRT: Addi $t0, $t0, 123",
     "Addi $t1, $t0, 4",
-    "Addi $t0, $t0, 40"
+    "Addi $t0, $t0, 40",
+    "Add $t0, PROMT, PROMT",
+    "BYE: .asciiz Goodbye"
     //"Syscall"
     //"Syscall"
     //"Jr $t5"
@@ -54,4 +56,5 @@ foreach (var item in compiled)
 {
     Console.WriteLine(Convert.ToString((int)item, 2).PadLeft(32, '0'));
 }
-c.ProcessFull(compiled);
+//c.ProcessFull(compiled);
+c.DumpMemory();

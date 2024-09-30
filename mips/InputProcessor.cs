@@ -7,55 +7,77 @@ using System.Threading.Tasks;
 
 namespace mips
 {
-    internal class LabelProcessor
-    {
-        string _processedLine;
-        public LabelProcessor(string Line) 
-        {
-            string[] SplitLine = Line.Split(new[] { ' ', ',', '\t' }, StringSplitOptions.RemoveEmptyEntries);
-
-            if (SplitLine[0][SplitLine[0].Length - 1] == ':')
-            {
-                _processedLine = Line.Substring(SplitLine[0].Length, Line.Length - SplitLine[0].Length);
-            }
-            else
-            {
-                _processedLine = Line;
-            }
-        }
-
-        public string GetProcessedLine()
-        {
-            return _processedLine;
-        }
-    }
-
     internal class InputProcessor
     {
-        int _result;
-        bool _isop = false;
-        string _op;
+        List<SoftOperationWrapper> AllOperations;
+        Computer Owner;
+        int addressPointer = 33;
+        Dictionary<string, int> LabelPositions = new Dictionary<string, int>();
 
-        public InputProcessor(string Line, List<SoftOperationWrapper> AllOperations)
+        public InputProcessor(Computer Owner, List<SoftOperationWrapper> AllOperations)
+        {
+            this.AllOperations = AllOperations;
+            this.Owner = Owner;
+        }
+
+        public void FindLabels(string Line)
         {
             string[] SplitLine = Line.Split(new[] { ' ', ',', '\t' }, StringSplitOptions.RemoveEmptyEntries);
 
             if (SplitLine[0][SplitLine[0].Length - 1] == ':')
             {
-                //label, reprocess split
-                SplitLine = Line.Substring(SplitLine[0].Length, Line.Length - SplitLine[0].Length).Split(new[] { ' ', ',', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                string LabelName = SplitLine[0].Remove(SplitLine[0].Length - 1, 1);
+                Line = Line.Substring(SplitLine[0].Length, Line.Length - SplitLine[0].Length);
+                SplitLine = Line.Split(new[] { ' ', ',', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                LabelPositions.Add(LabelName, addressPointer);
             }
 
             if (SplitLine[0][0] == '.')
             {
-                _isop = true;
-                _op = SplitLine[0].Remove(0, 1);
+                string LineRemainder = Line.Substring(SplitLine[0].Length, Line.Length - SplitLine[0].Length);
+                string op = SplitLine[0].Remove(0, 1);
+                SplitLine = LineRemainder.Split(new[] { ' ', ',', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+
+                switch (op)
+                {
+                    case "data":
+                        Owner.Jump(addressPointer);
+                        break;
+                    case "asciiz":
+                        foreach (char c in LineRemainder)
+                        {
+                            Owner.StoreMemory((int)c, addressPointer++);
+                        }
+                        Owner.StoreMemory(0, addressPointer++);
+                        //addressPointer += LineRemainder.Length + 1;
+                        break;
+                }
+
                 return;
             }
-            
+
+            addressPointer++;
+        }
+
+        public int ProcessLine(string Line)
+        {
+            string[] SplitLine = Line.Split(new[] { ' ', ',', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+
+            if (SplitLine[0][SplitLine[0].Length - 1] == ':')
+            {
+                SplitLine = Line.Substring(SplitLine[0].Length, Line.Length - SplitLine[0].Length).Split(new[] { ' ', ',', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                Line = Line.Substring(SplitLine[0].Length, Line.Length - SplitLine[0].Length);
+            }
+
+            if (SplitLine[0][0] == '.')
+            {
+                return -1;
+            }
+
             List<InputInstruction> Input = AllOperations.First((x) => x.OperationName == SplitLine[0]).inputInstructions.ToList();
 
             Input.Reverse();
+
             Func<string[], string, int, int>[] actions = new Func<string[], string, int, int>[]
             {
                 ReadStatic, ReadRegister, ReadImmediate
@@ -63,7 +85,7 @@ namespace mips
 
             int pointer = 0;
             int Result = 0;
-            
+
             foreach (var item in Input)
             {
                 int processResult = actions[(int)item.InstructionName].Invoke(SplitLine, item.InstructionValue, item.Length);
@@ -74,38 +96,21 @@ namespace mips
                 int shiftedValue = (processResult & ((1 << item.Length) - 1)) << pointer;
 
                 Result |= shiftedValue;
-                
+
                 pointer += item.Length;
             }
 
-            string binary = Convert.ToString((int)Result, 2).PadLeft(32, '0');
-            ////Console.WriteLine(binary);
-            WriteStringSeparations(binary);
-            _result = Result;
+            Owner.StoreMemory(Result);
+            return Result;
         }
 
-        public string GetOp()
+        public void DumpLabels()
         {
-            if (!_isop)
-                return "";
-
-            return _op;
-        }
-
-        public int GetResult()
-        {
-            return _result;
-        }
-
-        void WriteStringSeparations(string input)
-        {
-            for (int i = 0; i < input.Length; i++)
+            Console.WriteLine("Labels found:");
+            foreach(string key in LabelPositions.Keys)
             {
-                if (i == 6 || i == 11 || i == 16 || i == 21 || i == 26)
-                    Console.Write(' ');
-                Console.Write(input[i]);
+                Console.WriteLine($"{key}\t\t{LabelPositions[key]}");
             }
-            Console.Write('\n');
         }
 
         int ReadStatic(string[] FullLine, string StaticValue, int Length)
@@ -116,6 +121,12 @@ namespace mips
         int ReadRegister(string[] FullLine, string RegisterValue, int Length) 
         {
             int ParameterPosition = Int32.Parse(RegisterValue) + 1;
+
+            if (LabelPositions.ContainsKey(FullLine[ParameterPosition]))
+            {
+                return LabelPositions[FullLine[ParameterPosition]];
+            }
+
             Console.WriteLine("Lookup for " + FullLine[ParameterPosition]);
             return Computer.InstructionRegisterDefinitions.ToList().IndexOf(FullLine[ParameterPosition]);
         }
