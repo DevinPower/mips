@@ -13,6 +13,8 @@ namespace mips
         Computer Owner;
         int addressPointer = 33;
         Dictionary<string, int> LabelPositions = new Dictionary<string, int>();
+        List<int> ValidCommandLines = new List<int>();
+        int WriteCommandLine = 0;
 
         public InputProcessor(Computer Owner, List<SoftOperationWrapper> AllOperations)
         {
@@ -55,6 +57,8 @@ namespace mips
 
                 return;
             }
+
+            ValidCommandLines.Add(addressPointer);
 
             addressPointer++;
         }
@@ -100,7 +104,7 @@ namespace mips
                 pointer += item.Length;
             }
 
-            Owner.StoreMemory(Result);
+            Owner.StoreMemory(Result, ValidCommandLines[WriteCommandLine++]);
             return Result;
         }
 
