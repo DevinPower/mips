@@ -119,7 +119,7 @@ public class Computer
     {
         int memoryAddress = _memoryPointer;
         _memoryPointer += Size;
-        return memoryAddress - Size;
+        return memoryAddress;
     }
 
     //TODO: Not sure I like exposing this...

@@ -90,7 +90,7 @@ namespace mips
 
             Func<string[], string, int, int>[] actions = new Func<string[], string, int, int>[]
             {
-                ReadStatic, ReadRegister, ReadImmediate
+                ReadStatic, ReadRegister, ReadImmediate, ReadCalculatedInner, ReadCalculatedOuter
             };
 
             int pointer = 0;
@@ -140,22 +140,43 @@ namespace mips
             return Computer.InstructionRegisterDefinitions.ToList().IndexOf(FullLine[ParameterPosition]);
         }
 
+        int ReadCalculatedInner(string[] FullLine, string RegisterValue, int Length)
+        {
+            int ParameterPosition = Int32.Parse(RegisterValue);
+            string[] parts = FullLine[ParameterPosition].Split(new char[] { '(', ')' }, StringSplitOptions.RemoveEmptyEntries);
+
+            return int.Parse(parts[1]);
+        }
+
+        int ReadCalculatedOuter(string[] FullLine, string RegisterValue, int Length)
+        {
+            int ParameterPosition = Int32.Parse(RegisterValue);
+            string[] parts = FullLine[ParameterPosition].Split(new char[] { '(', ')' }, StringSplitOptions.RemoveEmptyEntries);
+
+            if (LabelPositions.ContainsKey(parts[0]))
+            {
+                return LabelPositions[parts[0]];
+            }
+
+            return Computer.InstructionRegisterDefinitions.ToList().IndexOf(parts[0]);
+        }
+
         int ReadImmediate(string[] FullLine, string ImmediateValue, int Length)
         {
             int ParameterPosition = Int32.Parse(ImmediateValue);
 
-            if (LabelPositions.ContainsKey(FullLine[ParameterPosition + 1]))
+            if (LabelPositions.ContainsKey(FullLine[ParameterPosition]))
             {
-                return LabelPositions[FullLine[ParameterPosition + 1]];
+                return LabelPositions[FullLine[ParameterPosition]];
             }
 
-            return Convert.ToInt32(FullLine[ParameterPosition + 1]);
+            return Convert.ToInt32(FullLine[ParameterPosition]);
         }
     }
 
     public class InputInstruction
     {
-        public enum InstructionType { ReadStatic, ReadRegister, ReadImmediate }
+        public enum InstructionType { ReadStatic, ReadRegister, ReadImmediate, CalculatedInner, CalculatedOuter }
         public InstructionType InstructionName { get; set; }
         public string InstructionValue { get; set; }
         public int Length { get; set; }

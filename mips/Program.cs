@@ -78,10 +78,26 @@ string[] ReadStrTest = new[]
     "PROMPT: .asciiz Please enter 10",
     //"INPUT: .asciiz 0000000000000000000000000000000000000000",
     ".data",
-    "Addi MONITOR, MONITOR, 1",
-    "Addi MONITOR, MONITOR, 1",
-    "Addi MONITOR, MONITOR, 1",
-    "Addi MONITOR, MONITOR, 1",
+    "Ori $t0, $zero, 65",
+    "Ori $t1, $zero, 1",
+    "SB $t0, MONITOR(1)",
+    "SB $t1, MONITOR(0)",
+    "SB $t1, MONITOR(0)",
+    "SB $t1, MONITOR(0)",
+    "SB $t1, MONITOR(0)",
+    "Ori $t0, $zero, 68",
+    "SB $t0, MONITOR(1)",
+    "SB $t1, MONITOR(0)",
+    "SB $t1, MONITOR(0)",
+    "SB $t1, MONITOR(0)",
+    "SB $t1, MONITOR(0)",
+
+    //"Ori MONITOR, $zero, 1",
+    //"Ori MONITOR, $zero, 1",
+    //"LB $a0, MONITOR(1)",
+    //"SB $zero, MONITOR(0)",
+    //"SB $zero, MONITOR(1)",
+    //"SB $zero, PROMPT(5)",
     //"LB $a0, PROMPT",
     //"Syscall",
     //"Ori $v0, $zero, 8",
@@ -93,9 +109,9 @@ string[] ReadStrTest = new[]
     //"Syscall",
 };
 
-Computer c = new Computer(64);
+Computer c = new Computer(128);
 c.Compile(ReadStrTest);
-Console.WriteLine("processing");
+
 c.ProcessFull();
 
 //foreach (var item in compiled)

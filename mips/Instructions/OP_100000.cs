@@ -20,7 +20,7 @@
         {
             Operations = new List<OperationWrapper<(Computer Computer, int rs, int rt, int imm)>>();
             
-            Operations.Add(new OperationWrapper<(Computer Computer, int rs, int rt, int imm)>(nameof(LB), 32, LB, GetRtImmediateInstructions()));
+            Operations.Add(new OperationWrapper<(Computer Computer, int rs, int rt, int imm)>(nameof(LB), 32, LB, GetRtCalculatedOffsetRs()));
         }
 
         static void LB((Computer Computer, int rs, int rt, int offset) passedArgs)

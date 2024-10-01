@@ -62,6 +62,16 @@
             };
         }
 
+        protected InputInstruction[] GetRtCalculatedOffsetRs()
+        {
+            return new[] {
+                new InputInstruction(InputInstruction.InstructionType.ReadStatic, GetOpCode(), 6),
+                new InputInstruction(InputInstruction.InstructionType.CalculatedInner, "2", 5),
+                new InputInstruction(InputInstruction.InstructionType.ReadRegister, "1", 5),
+                new InputInstruction(InputInstruction.InstructionType.CalculatedOuter, "2", 16)
+            };
+        }
+
         protected InputInstruction[] GetRsRtInstructions(string Funct)
         {
             return new[] {
@@ -78,9 +88,9 @@
         {
             return new[] {
                 new InputInstruction(InputInstruction.InstructionType.ReadStatic, GetOpCode(), 6),
+                new InputInstruction(InputInstruction.InstructionType.ReadRegister, "2", 5),
                 new InputInstruction(InputInstruction.InstructionType.ReadRegister, "1", 5),
-                new InputInstruction(InputInstruction.InstructionType.ReadRegister, "0", 5),
-                new InputInstruction(InputInstruction.InstructionType.ReadImmediate, "2", 16)
+                new InputInstruction(InputInstruction.InstructionType.ReadImmediate, "3", 16)
             };
         }
 

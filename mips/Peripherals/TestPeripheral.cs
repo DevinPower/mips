@@ -16,7 +16,7 @@ namespace mips.Peripherals
         {
             _mappedMemory = Owner.ReserveMemory(2);
             Owner.Memory[_mappedMemory] = 0;
-            Owner.Memory[_mappedMemory + 1] = (int)'M';
+            Owner.Memory[_mappedMemory + 1] = 0;
         }
 
         public override void Step(Computer Owner)

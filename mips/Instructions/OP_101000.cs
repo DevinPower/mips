@@ -20,12 +20,12 @@
         {
             Operations = new List<OperationWrapper<(Computer Computer, int rs, int rt, int imm)>>();
             
-            Operations.Add(new OperationWrapper<(Computer Computer, int rs, int rt, int imm)>(nameof(SB), 32, SB, GetRtImmediateInstructions()));
+            Operations.Add(new OperationWrapper<(Computer Computer, int rs, int rt, int imm)>(nameof(SB), 32, SB, GetRtCalculatedOffsetRs()));
         }
 
         static void SB((Computer Computer, int rs, int rt, int offset) passedArgs)
         {
-            passedArgs.Computer.Memory[passedArgs.rs + passedArgs.offset] = passedArgs.rt;
+            passedArgs.Computer.Memory[passedArgs.rs + passedArgs.offset] = passedArgs.Computer.Memory[passedArgs.rt];
         }
 
         public void Execute(Computer Computer, int Instruction) 
