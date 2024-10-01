@@ -1,5 +1,6 @@
 using mips;
 using mips.Instructions;
+using mips.Peripherals;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
@@ -7,6 +8,7 @@ using System.Text;
 public class Computer
 {
     public int[] Memory { get; set; }
+    public List<Peripheral> Peripherals { get; set; }
     int _memoryPointer = 33;
 
     Action[] _Syscall;
@@ -35,6 +37,7 @@ public class Computer
         Memory = new int[MemorySize];
         InitializeRegisters();
         LoadInstructionProcessors();
+        InitializePeripherals();
 
         _Syscall = new[]
         {
@@ -53,6 +56,7 @@ public class Computer
         int count = 0;
         while (!StepProgram()) count++;
         Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine();
         Console.WriteLine($"Finished program with {count} instructions!");
         //DumpMemory();
     }
@@ -60,6 +64,17 @@ public class Computer
     public void SysCall()
     {
         _Syscall[Memory[GetRegisterAddress("$v0")]]();
+    }
+
+    void InitializePeripherals()
+    {
+        Peripherals = new List<Peripheral>();
+        Peripherals.Add(new TestPeripheral());
+
+        foreach (var peripheral in Peripherals)
+        {
+            peripheral.Initialize(this);
+        }
     }
 
     public int GetProgramCounter()
@@ -100,6 +115,13 @@ public class Computer
         Memory[_memoryPointer++] = Value;
     }
 
+    public int ReserveMemory(int Size)
+    {
+        int memoryAddress = _memoryPointer;
+        _memoryPointer += Size;
+        return memoryAddress - Size;
+    }
+
     //TODO: Not sure I like exposing this...
     public void StoreMemory(int Value, int Position)
     {
@@ -116,13 +138,24 @@ public class Computer
         int CurrentLine = Memory[_programCounter++];
         if (CurrentLine == 0)
         {
+            ProcessPeripherals();
             return true;
         }
 
         int OpCode = (CurrentLine >> 26) & 0b111111;
         InstructionProcessors[OpCode].Execute(this, CurrentLine);
 
+        ProcessPeripherals();
+
         return false;
+    }
+
+    void ProcessPeripherals()
+    {
+        foreach (var peripheral in Peripherals)
+        {
+            peripheral.Step(this);
+        }
     }
 
     void LoadInstructionProcessors()
@@ -192,11 +225,16 @@ public class Computer
         var ops = GetAllInstructions();
 
         List<int> result = new List<int>();
-        InputProcessor ip = new InputProcessor(this, ops);
+        InputProcessor ip = new InputProcessor(this, ops, _memoryPointer);
 
         foreach (string Line in Program)
         {
             ip.FindLabels(Line);
+        }
+
+        foreach (var peripheral in Peripherals)
+        {
+            ip.AddLabel(peripheral.Name, peripheral.MemoryAddress);
         }
 
         foreach (string Line in Program)

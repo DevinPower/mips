@@ -74,22 +74,27 @@ string[] PrintTest = new[]
 
 string[] ReadStrTest = new[]
 {
+    //"MONITOR: .asciiz XX",
     "PROMPT: .asciiz Please enter 10",
-    "INPUT: .asciiz 0000000000000000000000000000000000000000",
+    //"INPUT: .asciiz 0000000000000000000000000000000000000000",
     ".data",
-    "Ori $v0, $zero, 4",
-    "LB $a0, PROMPT",
-    "Syscall",
-    "Ori $v0, $zero, 8",
-    "LB $a0, INPUT",
-    "LB $a1, 40",
-    "Syscall",
-    "Ori $v0, $zero, 4",
-    "Syscall",
+    "Addi MONITOR, MONITOR, 1",
+    "Addi MONITOR, MONITOR, 1",
+    "Addi MONITOR, MONITOR, 1",
+    "Addi MONITOR, MONITOR, 1",
+    //"LB $a0, PROMPT",
+    //"Syscall",
+    //"Ori $v0, $zero, 8",
+    //"LB $a0, INPUT",
+    //"LB $a1, 40",
+    //"Syscall",
+    //"Ori $v0, $zero, 4",
+    //"Ori MONITOR, $zero, 101",
+    //"Syscall",
 };
 
-Computer c = new Computer(4096);
-var compiled = c.Compile(ReadStrTest);
+Computer c = new Computer(64);
+c.Compile(ReadStrTest);
 Console.WriteLine("processing");
 c.ProcessFull();
 

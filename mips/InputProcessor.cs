@@ -16,10 +16,11 @@ namespace mips
         List<int> ValidCommandLines = new List<int>();
         int WriteCommandLine = 0;
 
-        public InputProcessor(Computer Owner, List<SoftOperationWrapper> AllOperations)
+        public InputProcessor(Computer Owner, List<SoftOperationWrapper> AllOperations, int startIndex)
         {
             this.AllOperations = AllOperations;
             this.Owner = Owner;
+            addressPointer = startIndex;
         }
 
         public void FindLabels(string Line)
@@ -61,6 +62,11 @@ namespace mips
             ValidCommandLines.Add(addressPointer);
 
             addressPointer++;
+        }
+
+        public void AddLabel(string Name, int Index)
+        {
+            LabelPositions.Add(Name, Index);
         }
 
         public int ProcessLine(string Line)
@@ -124,7 +130,7 @@ namespace mips
 
         int ReadRegister(string[] FullLine, string RegisterValue, int Length) 
         {
-            int ParameterPosition = Int32.Parse(RegisterValue) + 1;
+            int ParameterPosition = Int32.Parse(RegisterValue);
 
             if (LabelPositions.ContainsKey(FullLine[ParameterPosition]))
             {
