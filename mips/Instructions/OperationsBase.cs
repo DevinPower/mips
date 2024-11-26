@@ -64,11 +64,24 @@
 
         protected InputInstruction[] GetRtCalculatedOffsetRs()
         {
+            Console.WriteLine("TODO: Check GetRtCalculatedOffsetRs for potential " +
+                "duplicate parameter position");
+
             return new[] {
                 new InputInstruction(InputInstruction.InstructionType.ReadStatic, GetOpCode(), 6),
                 new InputInstruction(InputInstruction.InstructionType.CalculatedInner, "2", 5),
                 new InputInstruction(InputInstruction.InstructionType.ReadRegister, "1", 5),
                 new InputInstruction(InputInstruction.InstructionType.CalculatedOuter, "2", 16)
+            };
+        }
+
+        protected InputInstruction[] GetRsRtOffsetInstructions()
+        {
+            return new[] {
+                new InputInstruction(InputInstruction.InstructionType.ReadStatic, GetOpCode(), 6),
+                new InputInstruction(InputInstruction.InstructionType.ReadRegister, "1", 5),
+                new InputInstruction(InputInstruction.InstructionType.ReadRegister, "2", 5),
+                new InputInstruction(InputInstruction.InstructionType.ReadImmediate, "3", 16)
             };
         }
 
@@ -112,6 +125,14 @@
                 new InputInstruction(InputInstruction.InstructionType.ReadRegister, "0", 5),
                 new InputInstruction(InputInstruction.InstructionType.ReadImmediate, "2", 8),
                 new InputInstruction(InputInstruction.InstructionType.ReadStatic, Funct, 6),
+            };
+        }
+
+        protected InputInstruction[] GetTargetInstruction()
+        {
+            return new[] {
+                new InputInstruction(InputInstruction.InstructionType.ReadStatic, GetOpCode(), 6),
+                new InputInstruction(InputInstruction.InstructionType.ReadImmediate, "1", 26)
             };
         }
 

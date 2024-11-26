@@ -133,7 +133,7 @@ public class Computer
         return _memoryPointer;
     }
 
-    bool StepProgram()
+    public bool StepProgram()
     {
         int CurrentLine = Memory[_programCounter++];
         if (CurrentLine == 0)
@@ -195,6 +195,12 @@ public class Computer
         OP_101000 op10 = new OP_101000();
         op10.LoadOperations();
 
+        OP_000010 op11 = new OP_000010();
+        op11.LoadOperations();
+
+        OP_000011 op12 = new OP_000011();
+        op12.LoadOperations();
+
         InstructionProcessors.Add(0, op0);
         InstructionProcessors.Add(8, op1);
         InstructionProcessors.Add(9, op2);
@@ -206,6 +212,8 @@ public class Computer
         InstructionProcessors.Add(14, op8);
         InstructionProcessors.Add(32, op9);
         InstructionProcessors.Add(40, op10);
+        InstructionProcessors.Add(2, op11);
+        InstructionProcessors.Add(3, op12);
     }
 
     List<SoftOperationWrapper> GetAllInstructions()
