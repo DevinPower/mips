@@ -1,6 +1,6 @@
-﻿TEXT: .asciiz Hello, world from my string!
-TEXT2: .asciiz This is my second string
-PROMPT: .asciiz Please enter a string!
+﻿TEXT: .asciiz "Hello, world from my string!"
+TEXT2: .asciiz "This is my second string"
+PROMPT: .asciiz "Please enter a string!"
 .data
 Ori $v0, $zero, 4
 LB $a0, PROMPT(0)

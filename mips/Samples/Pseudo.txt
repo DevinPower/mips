@@ -1,0 +1,11 @@
+﻿;This is an example program for testing pseudo instructions
+;li should for example be transformed into two lines of code
+
+;Message to display to screen
+MSG: .asciiz "Success!"
+
+;Load and run the system call to print a message pointed at MSG
+.data
+Li $v0, 4
+LB $a0, MSG(0)
+Syscall

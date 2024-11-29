@@ -235,9 +235,16 @@ public class Computer
         List<int> result = new List<int>();
         InputProcessor ip = new InputProcessor(this, ops, _memoryPointer);
 
-        foreach (string Line in Program)
+        List<string> expandedProgram = new List<string>();
+
+        foreach(string Line in Program)
         {
-            ip.FindLabels(Line);
+            expandedProgram.AddRange(ip.CheckPseudoInstructions(Line));
+        }
+
+        foreach (string Line in expandedProgram)
+        {
+            ip.FindLabels(ip.GetLineWithoutComments(Line));
         }
 
         foreach (var peripheral in Peripherals)
@@ -245,9 +252,9 @@ public class Computer
             ip.AddLabel(peripheral.Name, peripheral.MemoryAddress);
         }
 
-        foreach (string Line in Program)
+        foreach (string Line in expandedProgram)
         {
-            result.Add(ip.ProcessLine(Line));
+            result.Add(ip.ProcessLine(ip.GetLineWithoutComments(Line)));
         }
 
         //ip.DumpLabels();

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 
 namespace mips
 {
@@ -16,16 +17,63 @@ namespace mips
         List<int> ValidCommandLines = new List<int>();
         int WriteCommandLine = 0;
 
+        Dictionary<string, Func<Match, string[]>> _pseudoInstructions;
+
         public InputProcessor(Computer Owner, List<SoftOperationWrapper> AllOperations, int startIndex)
         {
             this.AllOperations = AllOperations;
             this.Owner = Owner;
             addressPointer = startIndex;
+
+            InitializePseudoInstructions();
+        }
+
+        void InitializePseudoInstructions()
+        {
+            _pseudoInstructions = new Dictionary<string, Func<Match, string[]>>();
+            _pseudoInstructions.Add(@"Li\s+(\$\w+),\s*(\w+)", PI_li);
+        }
+
+        string[] PI_li(Match RegexResults)
+        {
+            return new string[] { $"Ori {RegexResults.Groups[1].Value}, $zero, {RegexResults.Groups[2].Value}" };
+        }
+
+        public string GetLineWithoutComments(string Line)
+        {
+            bool inQuotes = false;
+
+            for (int i = 0; i < Line.Length; i++)
+            {
+                char c = Line[i];
+                if (c == '"')
+                    inQuotes = !inQuotes;
+
+                if (c == ';' && !inQuotes)
+                    return Line.Substring(0, i);
+            }
+
+            return Line;
+        }
+
+        public string[] CheckPseudoInstructions(string Line)
+        {
+            foreach(string PseudoInstruction in _pseudoInstructions.Keys)
+            {
+                Match match = Regex.Match(Line, PseudoInstruction);
+                if (match.Success)
+                    return _pseudoInstructions[PseudoInstruction].Invoke(match);
+            }
+
+            return new string[] { Line };
         }
 
         public void FindLabels(string Line)
         {
             string[] SplitLine = Line.Split(new[] { ' ', ',', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+
+            if (SplitLine.Length == 0)
+                return;
 
             if (SplitLine[0][SplitLine[0].Length - 1] == ':')
             {
@@ -47,9 +95,20 @@ namespace mips
                         Owner.Jump(addressPointer);
                         break;
                     case "asciiz":
+                        bool open = false;
                         foreach (char c in LineRemainder)
                         {
-                            Owner.StoreMemory((int)c, addressPointer++);
+                            if (c == '"')
+                            {
+                                if (open)
+                                    break;
+
+                                open = true;
+                                continue;
+                            }
+
+                            if (open)
+                                Owner.StoreMemory((int)c, addressPointer++);
                         }
                         Owner.StoreMemory(0, addressPointer++);
                         //addressPointer += LineRemainder.Length + 1;
@@ -72,6 +131,9 @@ namespace mips
         public int ProcessLine(string Line)
         {
             string[] SplitLine = Line.Split(new[] { ' ', ',', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+
+            if (SplitLine.Length == 0)
+                return -1;
 
             if (SplitLine[0][SplitLine[0].Length - 1] == ':')
             {

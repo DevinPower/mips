@@ -1,0 +1,10 @@
+﻿;Include a string with a semicolon to ensure we still support this
+;Probably need a way to escape strings though....
+TEXT: .asciiz ";"
+
+;this is an example of a program with comments
+
+.data
+Ori $v0, $zero, 4 ; we support comments now
+LB $a0, TEXT(0)
+Syscall
