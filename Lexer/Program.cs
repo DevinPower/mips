@@ -4,15 +4,15 @@
     {
         static void Main(string[] args)
         {
-            string Code = "while (true){\n" +
-                "   MyVariable2 = 97;//this is a comment\n" +
-                "}\n" +
-                "//comment all by itself\n" +
-                "foreach (bla in blabla){}\n" +
-                "foreachard = 2;\n" +
-                "str = \"hello, world!\";";
+            string Code = "var test = 5;//A simple example statement\n" +
+                "var test2 = 77;";
             Lexer l = new Lexer();
-            l.Lexicate(Code);
+            var tokens = l.Lexicate(Code);
+
+            Console.WriteLine("----");
+
+            Parser parser = new Parser(tokens);
+            parser.Parse();
         }
     }
 }

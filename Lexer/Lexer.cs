@@ -6,21 +6,33 @@ using System.Threading.Tasks;
 
 namespace Lexer
 {
+    public enum TokenTypes { Error, Nothing, Operator, Identifier, Keyword, Separator, Literal, Comment }
+    public class Token
+    {
+        public TokenTypes TokenType { get; private set; }
+        public string Value { get; private set; }
+
+        public Token(TokenTypes tokenType, string value)
+        {
+            TokenType = tokenType;
+            Value = value;
+        }
+    }
+
     internal class Lexer
     {
-        enum TokenTypes { Error, Nothing, Operator, Identifier, Keyword, Separator, Comment }
+       
         readonly string[] Operators = new[] { 
-            "=", "+", "-", "/", "*", "%",
-            "!=", "=", "==", ">=", "<=",
-            "<", ">", "++", "--"
+            "=", "==", "!=", "<", "<=", ">", ">=",
+            "+", "-", "*", "/", "%"
         };
 
         readonly string[] Keywords = new[] {
-            "if", "return", "while", "for", "var", "foreach", "in"
+            "if", "return", "while", "var"
         };
 
         readonly string[] Separators = new[] {
-            ";", "(", ")", "{", "}", "'", "\""
+            ";", "(", ")", "{", "}", "\""
         };
 
         public Lexer()
@@ -28,7 +40,7 @@ namespace Lexer
 
         }
 
-        public void Lexicate(string Contents)
+        public List<Token> Lexicate(string Contents)
         {
             string CurrentToken = "";
 
@@ -80,6 +92,8 @@ namespace Lexer
             }
 
             PrintAnalysis(LexedCode);
+
+            return LexedCode.Select((x) => new Token(x.Item2, x.Item1.Trim())).ToList();
         }
 
         void PrintAnalysis(List<(string, TokenTypes)> Tokens)
@@ -103,6 +117,9 @@ namespace Lexer
 
             if (Separators.Contains(Value))
                 return TokenTypes.Separator;
+
+            if (Int32.TryParse(Value, out int result))
+                return TokenTypes.Literal;
 
             return TokenTypes.Identifier;
         }
