@@ -4,6 +4,7 @@
     {
         static void Main(string[] args)
         {
+            //tidescript
             string Code = "var test = 5;//A simple example statement\n" +
                 "var test2 = 77;";
             Lexer l = new Lexer();

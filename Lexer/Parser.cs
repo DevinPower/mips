@@ -18,7 +18,7 @@ namespace Lexer
 
         public void Parse()
         {
-            Node<ASTExpression> ASTRoot = new Node<ASTExpression>(null);
+            Node<ASTExpression> ASTRoot;
 
             while (current < _tokens.Count)
             {
@@ -29,23 +29,38 @@ namespace Lexer
                         Variable currentExpression = new Variable(Peek().Value, "var");
                         Console.WriteLine($"variable declaration for {Peek().Value}");
                     }
+
+                    continue;
                 }
 
-                if (CheckType(TokenTypes.Operator))
+                if (IsMatch(TokenTypes.Operator))
                 {
-                    if (Peek().Value == "=")
+                    if (Previous().Value == "=")
                     {
-                        //Assignment
+                        Console.WriteLine("Assignment to");
                         Assignment Assignment = new Assignment(null, null);
                     }
+
+                    continue;
                 }
 
-                if (CheckType(TokenTypes.Literal))
+                if (IsMatch(TokenTypes.Literal))
                 {
-                    Console.WriteLine($"Literal = {Peek().Value}");
+                    Console.WriteLine($"Literal = {Previous().Value}");
+                    continue;
                 }
 
-                current++;
+                if (IsMatch(TokenTypes.Identifier))
+                {
+                    continue;
+                }
+
+                if (IsMatch(TokenTypes.Separator))
+                {
+                    continue;
+                }
+
+                if (IsMatch(TokenTypes.Nothing) || IsMatch(TokenTypes.Comment)) continue;   //Do Nothing
             }
         }
 

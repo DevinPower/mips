@@ -32,7 +32,7 @@ namespace Lexer
         };
 
         readonly string[] Separators = new[] {
-            ";", "(", ")", "{", "}", "\""
+            ";", "(", ")", "{", "}", "\"", "[", "]"
         };
 
         public Lexer()
