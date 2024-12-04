@@ -8,21 +8,32 @@ namespace Lexer.AST
 {
     internal class ASTExpression
     {
+        public Node<ASTExpression> TreeRepresentation { get; private set; }
+
+        public void SetTreeRepresentation(Node<ASTExpression> TreeNode)
+        {
+            TreeRepresentation = TreeNode;
+        }
     }
 
     internal class Expression : ASTExpression
     {
+    }
 
+    internal class Operand : Expression
+    {
     }
 
     public enum LiteralTypes { NUMBER, STRING, VECTOR2, VECTOR3, TRUE, FALSE, NULL }
-    internal class Literal : Expression
+    internal class Literal : Operand
     {
         LiteralTypes Type;
+        object Value;
 
-        public Literal(LiteralTypes Type)
+        public Literal(LiteralTypes Type, object value)
         {
             this.Type = Type;
+            Value = value;
         }
     }
 
@@ -36,7 +47,7 @@ namespace Lexer.AST
         }
     }
 
-    internal class Variable : ASTExpression
+    internal class Variable : Operand
     {
         public string Name { get; private set; }
         public string Type { get; private set; }
@@ -50,12 +61,12 @@ namespace Lexer.AST
 
     internal class Assignment : ASTExpression
     {
-        public Variable Variable { get; private set; }
-        public Literal Literal { get; private set; }
-        public Assignment(Variable Variable, Literal Literal)
+        public Operand LHS { get; private set; }
+        public Operand RHS { get; private set; }
+        public Assignment(Operand LHS, Operand RHS)
         {
-            this.Variable = Variable;
-            this.Literal = Literal;
+            this.LHS = LHS;
+            this.RHS = RHS;
         }
     }
 

@@ -5,8 +5,12 @@
         static void Main(string[] args)
         {
             //tidescript
-            string Code = "var test = 5;//A simple example statement\n" +
-                "var test2 = 77;";
+            //string Code = "var test = 5;//A simple example statement\n" +
+            //    "var test2 = 61;" +
+            //    "test = test2;";
+
+            var Code = "9 + 12 + 22;";
+
             Lexer l = new Lexer();
             var tokens = l.Lexicate(Code);
 
