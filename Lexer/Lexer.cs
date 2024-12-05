@@ -23,7 +23,7 @@ namespace Lexer
     internal class Lexer
     {
        
-        readonly string[] Operators = new[] { 
+        readonly string[] BinaryOperators = new[] { 
             "=", "==", "!=", "<", "<=", ">", ">=",
             "+", "-", "*", "/", "%"
         };
@@ -110,7 +110,7 @@ namespace Lexer
             if (string.IsNullOrWhiteSpace(Value))
                 return TokenTypes.Nothing;
 
-            if (Operators.Contains(Value))
+            if (BinaryOperators.Contains(Value))
                 return TokenTypes.Operator;
 
             if (Keywords.Contains(Value))

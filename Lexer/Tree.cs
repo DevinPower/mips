@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace Lexer
 {
@@ -29,6 +30,31 @@ namespace Lexer
 
             Children.Add(newNode);
             return newNode;
+        }
+
+        public void AddChild(Node<T> Node)
+        {
+            Children.Add((Node<T>)Node);
+        }
+
+        //courtesy of https://stackoverflow.com/questions/1649027/how-do-i-print-out-a-tree-structure
+        public void PrintPretty(string indent, bool last)
+        {
+            Console.Write(indent);
+            if (last)
+            {
+                Console.Write("\\-");
+                indent += "  ";
+            }
+            else
+            {
+                Console.Write("|-");
+                indent += "| ";
+            }
+            Console.WriteLine(Data.ToString());
+
+            for (int i = 0; i < Children.Count; i++)
+                Children[i].PrintPretty(indent, i == Children.Count - 1);
         }
     }
 }

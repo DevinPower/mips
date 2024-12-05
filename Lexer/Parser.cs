@@ -35,6 +35,59 @@ namespace Lexer
                         return currentExpression;
                     }
                 }
+
+                if (Previous().Value == "while")
+                {
+                    Stack<ASTExpression> stack = new Stack<ASTExpression>();
+                    Node<ASTExpression> subRoot = new Node<ASTExpression>(null);
+                    ASTExpression parsedExpression = ConsumeToken(stack, subRoot);
+
+                    if (Peek().Value != "{")
+                        throw new Exception("Unhandled exception for not seeing scriptblock on while loop");
+
+                    ASTExpression parsedBody = ConsumeToken(stack, subRoot);
+
+                    ASTExpression loop = new WhileLoop((Expression)parsedExpression, (Expression)parsedBody);
+                    Node<ASTExpression> loopNode = ASTRoot.AddChild(loop);
+
+                    loopNode.AddChild(parsedExpression);
+                    loopNode.AddChild(parsedBody);
+
+                    Expressions.Push(loop);
+
+                    return loop;
+                }
+
+                return null;
+            }
+
+            if (IsMatch(TokenTypes.Separator))
+            {
+                if (Previous().Value == "(")
+                {
+                    Node<ASTExpression> parsedExpression = ParseToSymbol(typeof(ParanEnd));
+                    ASTRoot.AddChild(parsedExpression);
+                    return parsedExpression.Data;
+                }
+
+                if (Previous().Value == "{")
+                {
+                    Node<ASTExpression> parsedExpression = ParseToSymbol(typeof(CurlyEnd));
+                    ASTRoot.AddChild(parsedExpression);
+                    return parsedExpression.Data;
+                }
+
+                if (Previous().Value == ")")
+                {
+                    return new ParanEnd();
+                }
+
+                if (Previous().Value == "}")
+                {
+                    return new CurlyEnd();
+                }
+
+                return null;
             }
 
             if (IsMatch(TokenTypes.Identifier))
@@ -66,8 +119,22 @@ namespace Lexer
                     }
                 }
 
-                if (HandleOperator("+", Expressions, ASTRoot, OperatorTypes.ADD) is var result && result != null)
-                    return result;
+                //arithmetic
+                if (HandleOperator("+", Expressions, ASTRoot, OperatorTypes.ADD) is var addResult && addResult != null)
+                    return addResult;
+
+                if (HandleOperator("-", Expressions, ASTRoot, OperatorTypes.SUBTRACT) is var subResult && subResult != null)
+                    return subResult;
+
+                if (HandleOperator("*", Expressions, ASTRoot, OperatorTypes.MULTIPLY) is var multResult && multResult != null)
+                    return multResult;
+
+                if (HandleOperator("/", Expressions, ASTRoot, OperatorTypes.DIVIDE) is var divResult && divResult != null)
+                    return divResult;
+
+                //comparison
+                if (HandleOperator("<", Expressions, ASTRoot, OperatorTypes.LESSTHAN) is var lessResult && lessResult != null)
+                    return lessResult;
             }
 
             if (IsMatch(TokenTypes.Literal))
@@ -79,11 +146,6 @@ namespace Lexer
                 Expressions.Push(literal);
 
                 return literal;
-            }
-
-            if (IsMatch(TokenTypes.Separator))
-            {
-                return null;
             }
 
             if (IsMatch(TokenTypes.Nothing) || IsMatch(TokenTypes.Comment)) return null;   //Do Nothing
@@ -120,7 +182,7 @@ namespace Lexer
         public void Parse()
         {
             Stack<ASTExpression> Expressions = new Stack<ASTExpression>();
-            Node<ASTExpression> ASTRoot = new Node<ASTExpression>(null);
+            Node<ASTExpression> ASTRoot = new Node<ASTExpression>(new Expression());
 
             while (current < _tokens.Count)
             {
@@ -128,11 +190,30 @@ namespace Lexer
                 ConsumeToken(Expressions, ASTRoot);
             }
 
-            Console.WriteLine("DONE");
+            ASTRoot.PrintPretty("", true);
+        }
+
+        public Node<ASTExpression> ParseToSymbol(Type SymbolType)
+        {
+            Console.WriteLine($"Parsing to a {SymbolType.ToString()}");
+            Stack<ASTExpression> Expressions = new Stack<ASTExpression>();
+            Node<ASTExpression> ASTRoot = new Node<ASTExpression>(new Expression());
+
+            while (current < _tokens.Count)
+            {
+                if (IsOutOfRange()) break;
+                var currentToken = ConsumeToken(Expressions, ASTRoot);
+                if (currentToken == null) continue;
+                if (currentToken.GetType() == SymbolType) 
+                    break;
+            }
+
+            return ASTRoot;
         }
 
         bool CheckType(TokenTypes type) => _tokens[current].TokenType == type;
         bool IsMatch(TokenTypes type) {
+            if (current >= _tokens.Count) return false;
             if (_tokens[current].TokenType == type)
             {
                 Advance();
@@ -159,7 +240,7 @@ namespace Lexer
         }
 
         Token Peek() 
-        { 
+        {
             return _tokens[current]; 
         }
 

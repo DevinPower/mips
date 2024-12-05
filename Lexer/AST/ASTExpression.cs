@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace Lexer.AST
 {
@@ -14,10 +15,19 @@ namespace Lexer.AST
         {
             TreeRepresentation = TreeNode;
         }
+
+        public override string ToString()
+        {
+            return "BASECLASS";
+        }
     }
 
     internal class Expression : ASTExpression
     {
+        public override string ToString()
+        {
+            return $"E:{GetHashCode().ToString()}";
+        }
     }
 
     internal class Operand : Expression
@@ -35,15 +45,25 @@ namespace Lexer.AST
             this.Type = Type;
             Value = value;
         }
+
+        public override string ToString()
+        {
+            return Value.ToString();
+        }
     }
 
-    public enum OperatorTypes { ADD, SUBTRACT }
+    public enum OperatorTypes { ADD, SUBTRACT, MULTIPLY, DIVIDE, LESSTHAN, GREATERTHAN, EQUAL }
     internal class Operator : ASTExpression
     {
         OperatorTypes Type;
         public Operator(OperatorTypes Type)
         {
             this.Type = Type;
+        }
+
+        public override string ToString()
+        {
+            return new string[] { "+", "-", "*", "÷", "<", ">", "=="}[(int)Type];
         }
     }
 
@@ -57,7 +77,15 @@ namespace Lexer.AST
             this.Name = Name;
             this.Type = Type;
         }
+
+        public override string ToString()
+        {
+            return Type + ":" + Name;
+        }
     }
+
+    internal class ParanEnd : ASTExpression { }
+    internal class CurlyEnd : ASTExpression { }
 
     internal class Assignment : ASTExpression
     {
@@ -67,6 +95,28 @@ namespace Lexer.AST
         {
             this.LHS = LHS;
             this.RHS = RHS;
+        }
+
+        public override string ToString()
+        {
+            return "=";
+        }
+    }
+
+    internal class WhileLoop : ASTExpression
+    {
+        Expression Condition;
+        Expression Body;
+
+        public WhileLoop(Expression Condition, Expression Body)
+        {
+            this.Condition = Condition;
+            this.Body = Body;
+        }
+
+        public override string ToString()
+        {
+            return "loop->" + Condition.ToString() + "," + Body.ToString();
         }
     }
 
@@ -81,6 +131,11 @@ namespace Lexer.AST
             this.LHS = LHS;
             this.Operator = Operator;
             this.RHS = RHS;
+        }
+
+        public override string ToString()
+        {
+            return LHS.ToString() + Operator.ToString() + RHS.ToString();
         }
     }
 }
