@@ -50,8 +50,11 @@ namespace Lexer
                     ASTExpression loop = new WhileLoop((Expression)parsedExpression, (Expression)parsedBody);
                     Node<ASTExpression> loopNode = ASTRoot.AddChild(loop);
 
-                    loopNode.AddChild(parsedExpression);
-                    loopNode.AddChild(parsedBody);
+                    Expression LoopContents = new Expression();
+                    var LoopContentsAST = loopNode.AddChild(LoopContents);
+
+                    subRoot.Children[0].Children.ForEach(child => { loopNode.AddChild(child); });
+                    subRoot.Children[1].Children.ForEach(child => { LoopContentsAST.AddChild(child); });
 
                     Expressions.Push(loop);
 

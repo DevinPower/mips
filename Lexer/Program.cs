@@ -12,7 +12,7 @@
             //var Code = "12 * (22 + 7);\n" +
             //    "var test = 90;";
 
-            var Code = "while ( i < 10 ) { i = 2;\nj = 5; 9 * (2 / i);};";
+            var Code = "while ( i < 10 ) { i = 2;\nj = 5; 9 * 2 / i;};";
 
             //todo: cannot do X = 9 * ....
             //var Code = "while ( i < 10 ) { i = 2;\nj = 5; x = 9 * (2 / i);};";
