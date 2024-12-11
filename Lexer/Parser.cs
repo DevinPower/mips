@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Lexer
 {
-    internal class Parser
+    public class Parser
     {
         List<Token> _tokens;
         int current = 0;

@@ -7,7 +7,7 @@ using System.Xml.Linq;
 
 namespace Lexer.AST
 {
-    internal class ASTExpression
+    public class ASTExpression
     {
         public Node<ASTExpression> TreeRepresentation { get; private set; }
 

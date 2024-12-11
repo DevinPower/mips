@@ -20,7 +20,7 @@ namespace Lexer
         }
     }
 
-    internal class Lexer
+    public class Lexer
     {
        
         readonly string[] BinaryOperators = new[] { 

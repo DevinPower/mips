@@ -7,7 +7,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "mips", "mips\mips.csproj", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Lexer", "Lexer\Lexer.csproj", "{78E8CAD8-1CCB-4F1A-A21F-A482156454C0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTests", "UnitTests\UnitTests.csproj", "{49EB5560-9423-47AC-93AE-963D977C1025}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UnitTests", "UnitTests\UnitTests.csproj", "{49EB5560-9423-47AC-93AE-963D977C1025}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TideScriptREPL", "TideScriptREPL\TideScriptREPL.csproj", "{87142A9A-5241-4EFA-AD38-6C02FA85F895}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,6 +29,10 @@ Global
 		{49EB5560-9423-47AC-93AE-963D977C1025}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{49EB5560-9423-47AC-93AE-963D977C1025}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{49EB5560-9423-47AC-93AE-963D977C1025}.Release|Any CPU.Build.0 = Release|Any CPU
+		{87142A9A-5241-4EFA-AD38-6C02FA85F895}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{87142A9A-5241-4EFA-AD38-6C02FA85F895}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{87142A9A-5241-4EFA-AD38-6C02FA85F895}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{87142A9A-5241-4EFA-AD38-6C02FA85F895}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
