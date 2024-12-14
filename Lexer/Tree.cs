@@ -56,5 +56,16 @@ namespace Lexer
             for (int i = 0; i < Children.Count; i++)
                 Children[i].PrintPretty(indent, i == Children.Count - 1);
         }
+
+        //TODO: Maybe just take type T instead of Node<T>?
+        public void PostOrderTraversal(Action<Node<T>> Action)
+        {
+            foreach (var child in Children)
+            {
+                child.PostOrderTraversal(Action);
+            }
+
+            Action(this);
+        }
     }
 }

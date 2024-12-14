@@ -20,6 +20,11 @@ namespace Lexer.AST
         {
             return "BASECLASS";
         }
+
+        public virtual string[] GenerateCode(CompilationMeta MetaData)
+        {
+            return new string[1] { ";Forgot to override GenerateCode function" };
+        }
     }
 
     internal class Expression : ASTExpression
@@ -49,6 +54,11 @@ namespace Lexer.AST
         public override string ToString()
         {
             return Value.ToString();
+        }
+
+        public override string[] GenerateCode(CompilationMeta MetaData)
+        {
+            return base.GenerateCode(MetaData);
         }
     }
 
@@ -81,6 +91,11 @@ namespace Lexer.AST
         public override string ToString()
         {
             return Type + ":" + Name;
+        }
+
+        public override string[] GenerateCode(CompilationMeta MetaData)
+        {
+            return new string[1] { $"LB $a0, {MetaData.LookupVariable(Name)}" };
         }
     }
 

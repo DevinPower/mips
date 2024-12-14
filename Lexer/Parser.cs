@@ -182,7 +182,7 @@ namespace Lexer
             return null;
         }
 
-        public void Parse()
+        public Node<ASTExpression> Parse()
         {
             Stack<ASTExpression> Expressions = new Stack<ASTExpression>();
             Node<ASTExpression> ASTRoot = new Node<ASTExpression>(new Expression());
@@ -194,6 +194,8 @@ namespace Lexer
             }
 
             ASTRoot.PrintPretty("", true);
+
+            return ASTRoot;
         }
 
         public Node<ASTExpression> ParseToSymbol(Type SymbolType)

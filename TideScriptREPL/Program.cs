@@ -20,7 +20,9 @@ namespace TideScriptREPL
 
         static void REPL()
         {
-            var Code = "while (i < 10) { i = 2;\nj = 5; 9 * 2 / i;};";
+            //var Code = "while (i < 10) { i = 2;\nj = 5; 9 * 2 / i;};";
+
+            var Code = "var x = 10;";
 
             while (true)
             {
@@ -39,7 +41,12 @@ namespace TideScriptREPL
             var tokens = l.Lexicate(Code);
 
             Lexer.Parser parser = new Lexer.Parser(tokens);
-            parser.Parse();
+            var result = parser.Parse();
+
+            result.PostOrderTraversal((x) =>
+            {
+                Console.WriteLine(x.Data.ToString());
+            });
         }
     }
 }
