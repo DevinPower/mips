@@ -10,10 +10,12 @@ namespace Lexer
     public class Parser
     {
         List<Token> _tokens;
+        CompilationMeta _meta;
         int current = 0;
-        public Parser(List<Token> Tokens)
+        public Parser(List<Token> Tokens, CompilationMeta CompilationMeta)
         {
             _tokens = Tokens;
+            _meta = CompilationMeta;
         }
 
         public ASTExpression ConsumeToken(Stack<ASTExpression> Expressions, Node<ASTExpression> ASTRoot)
@@ -28,7 +30,8 @@ namespace Lexer
                     if (Previous().Value == "var")
                     {
                         Variable currentExpression = new Variable(Peek().Value, "var");
-                        Console.WriteLine($"variable declaration for {Peek().Value}");
+                        _meta.PushVariable(Peek().Value);
+
                         current++;
                         Expressions.Push(currentExpression);
 

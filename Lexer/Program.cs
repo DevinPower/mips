@@ -23,8 +23,8 @@
 
             Console.WriteLine("----");
 
-            Parser parser = new Parser(tokens);
-            parser.Parse();
+            //Parser parser = new Parser(tokens);
+            //parser.Parse();
         }
     }
 }

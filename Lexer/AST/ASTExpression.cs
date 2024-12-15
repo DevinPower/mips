@@ -10,6 +10,7 @@ namespace Lexer.AST
     public class ASTExpression
     {
         public Node<ASTExpression> TreeRepresentation { get; private set; }
+        public virtual bool SkipGeneration { get { return false; } }
 
         public void SetTreeRepresentation(Node<ASTExpression> TreeNode)
         {
@@ -21,9 +22,9 @@ namespace Lexer.AST
             return "BASECLASS";
         }
 
-        public virtual string[] GenerateCode(CompilationMeta MetaData)
+        public virtual IntermediaryCodeMeta GenerateCode(CompilationMeta MetaData)
         {
-            return new string[1] { ";Forgot to override GenerateCode function" };
+            return new IntermediaryCodeMeta(new string[1] { $";Forgot to override GenerateCode function ({this.GetType()})" }, true);
         }
     }
 
@@ -44,6 +45,7 @@ namespace Lexer.AST
     {
         LiteralTypes Type;
         object Value;
+        public override bool SkipGeneration { get { return true; } }
 
         public Literal(LiteralTypes Type, object value)
         {
@@ -51,14 +53,14 @@ namespace Lexer.AST
             Value = value;
         }
 
+        public object GetValue()
+        {
+            return Value;
+        }
+
         public override string ToString()
         {
             return Value.ToString();
-        }
-
-        public override string[] GenerateCode(CompilationMeta MetaData)
-        {
-            return base.GenerateCode(MetaData);
         }
     }
 
@@ -75,12 +77,18 @@ namespace Lexer.AST
         {
             return new string[] { "+", "-", "*", "÷", "<", ">", "=="}[(int)Type];
         }
+
+        public override IntermediaryCodeMeta GenerateCode(CompilationMeta MetaData)
+        {
+            return new IntermediaryCodeMeta(new string[1] { "MUL B, A" }, true );
+        }
     }
 
     internal class Variable : Operand
     {
         public string Name { get; private set; }
         public string Type { get; private set; }
+        public override bool SkipGeneration { get { return true; } }
 
         public Variable(string Name, string Type)
         {
@@ -91,11 +99,6 @@ namespace Lexer.AST
         public override string ToString()
         {
             return Type + ":" + Name;
-        }
-
-        public override string[] GenerateCode(CompilationMeta MetaData)
-        {
-            return new string[1] { $"LB $a0, {MetaData.LookupVariable(Name)}" };
         }
     }
 
@@ -115,6 +118,16 @@ namespace Lexer.AST
         public override string ToString()
         {
             return "=";
+        }
+
+        public override IntermediaryCodeMeta GenerateCode(CompilationMeta MetaData)
+        {
+            if (RHS is Literal value)
+                return new IntermediaryCodeMeta(
+                    new string[1] { $"Ori {MetaData.LookupVariable(((Variable)LHS).Name)}, {(value.GetValue())}" },
+                    false);
+            else
+                return base.GenerateCode(MetaData);
         }
     }
 
@@ -151,6 +164,37 @@ namespace Lexer.AST
         public override string ToString()
         {
             return LHS.ToString() + Operator.ToString() + RHS.ToString();
+        }
+
+        public override IntermediaryCodeMeta GenerateCode(CompilationMeta MetaData)
+        {
+            string LHSLoad = "";
+            int leftRegister = -1;
+            if (LHS is Variable lvalue)
+            {
+                leftRegister = MetaData.GetTemporaryRegister(MetaData.LookupVariable(lvalue.Name));
+                LHSLoad = $"Li $t{leftRegister}, {lvalue.Name}";
+            }
+            else
+            {
+                leftRegister = MetaData.GetTemporaryRegister(-1);
+                LHSLoad = $"Ori $t{leftRegister}, {(LHS as Literal).GetValue()}";
+            }
+
+            string RHSLoad = "";
+            int rightRegister = -1;
+            if (RHS is Variable rvalue)
+            {
+                rightRegister = MetaData.GetTemporaryRegister(MetaData.LookupVariable(rvalue.Name));
+                RHSLoad = $"Li $t{rightRegister}, {rvalue.Name}";
+            }
+            else
+            {
+                rightRegister = MetaData.GetTemporaryRegister(-1);
+                RHSLoad = $"Ori $t{rightRegister}, {(RHS as Literal).GetValue()}";
+            }
+
+            return new IntermediaryCodeMeta(new string[3] { LHSLoad, RHSLoad, $"MUL $t{leftRegister}, $t{rightRegister}" }, true );
         }
     }
 }
