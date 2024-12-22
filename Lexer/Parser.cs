@@ -29,13 +29,26 @@ namespace Lexer
                     //Declaration
                     if (Previous().Value == "var")
                     {
-                        Variable currentExpression = new Variable(Peek().Value, "var");
-                        _meta.PushVariable(Peek().Value);
+                        if (Int32.TryParse(Peek().Value, out int literalVal))
+                        {
+                            Variable currentExpression = new Variable(Peek().Value, "int");
+                            _meta.PushInt(Peek().Value, -1);
 
-                        current++;
-                        Expressions.Push(currentExpression);
+                            current++;
+                            Expressions.Push(currentExpression);
 
-                        return currentExpression;
+                            return currentExpression;
+                        }
+                        else
+                        {
+                            Variable currentExpression = new Variable(Peek().Value, "string");
+                            _meta.PushString(Peek().Value, "S");
+
+                            current++;
+                            Expressions.Push(currentExpression);
+
+                            return currentExpression;
+                        }
                     }
                 }
 
@@ -108,9 +121,9 @@ namespace Lexer
             {
                 if (Previous().Value == "=")
                 {
-                    if (Expressions.Pop() is Operand LHS)
+                    if (Expressions.Pop() is Variable LHS)
                     {
-                        if (ConsumeToken(Expressions, ASTRoot) is Operand RHS)
+                        if (ConsumeToken(Expressions, ASTRoot) is Expression RHS)
                         {
                             ASTExpression Assignment = new Assignment(LHS, RHS);
 
@@ -145,8 +158,7 @@ namespace Lexer
 
             if (IsMatch(TokenTypes.Literal))
             {
-                Console.WriteLine($"Literal = {Previous().Value}");
-
+                _meta.PushString("LitTest"+Previous().Value.GetHashCode(), Previous().Value);
                 Literal literal = new Literal(LiteralTypes.NUMBER, Previous().Value);
 
                 Expressions.Push(literal);
@@ -203,7 +215,6 @@ namespace Lexer
 
         public Node<ASTExpression> ParseToSymbol(Type SymbolType)
         {
-            Console.WriteLine($"Parsing to a {SymbolType.ToString()}");
             Stack<ASTExpression> Expressions = new Stack<ASTExpression>();
             Node<ASTExpression> ASTRoot = new Node<ASTExpression>(new Expression());
 

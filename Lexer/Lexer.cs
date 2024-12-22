@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace Lexer
 {
@@ -33,7 +34,7 @@ namespace Lexer
         };
 
         readonly string[] Separators = new[] {
-            ";", "(", ")", "{", "}", "\"", "[", "]"
+            ";", "(", ")", "{", "}", "[", "]"
         };
 
         public Lexer()
@@ -61,6 +62,32 @@ namespace Lexer
                     }
 
                     LexedCode.Add((comment, TokenTypes.Comment));
+
+                    CurrentToken = "";
+                    continue;
+                }
+
+                if (c == '"')
+                {
+                    string literalString = "";
+                    bool escaped = false;
+                    for (i = i + 1; i < Contents.Length; i++)
+                    {
+                        c = Contents[i];
+
+                        if (c == '\\')
+                        {
+                            escaped = true; 
+                            continue;
+                        }
+
+                        if (c == '"' && !escaped) break;
+                        literalString += c;
+
+                        escaped = false;
+                    }
+
+                    LexedCode.Add((literalString, TokenTypes.Literal));
 
                     CurrentToken = "";
                     continue;

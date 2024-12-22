@@ -60,7 +60,7 @@ namespace Lexer.AST
 
         public override string ToString()
         {
-            return Value.ToString();
+            return $"'{Value.ToString()}'";
         }
     }
 
@@ -107,9 +107,9 @@ namespace Lexer.AST
 
     internal class Assignment : ASTExpression
     {
-        public Operand LHS { get; private set; }
-        public Operand RHS { get; private set; }
-        public Assignment(Operand LHS, Operand RHS)
+        public Variable LHS { get; private set; }
+        public Expression RHS { get; private set; }
+        public Assignment(Variable LHS, Expression RHS)
         {
             this.LHS = LHS;
             this.RHS = RHS;

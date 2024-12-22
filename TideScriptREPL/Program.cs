@@ -30,9 +30,11 @@ namespace TideScriptREPL
 
             var Code = "var left = 10;\n" +
                 "var right = 20;\n" +
-                "var third = 1;\n" +
-                "left * right;\n" + 
+                "var third = \"test \\\"value\\\" string\";\n" +
                 "right + third;";
+
+            //var Code = "var x = (9 * 7 * 67);\n" +
+            //    "var y = 6;";
 
             while (true)
             {
@@ -55,7 +57,7 @@ namespace TideScriptREPL
             Parser parser = new Parser(tokens, meta);
             var result = parser.Parse();
 
-
+            List<string> intermediaryCode = new List<string>();
             result.PostOrderTraversal((x) =>
             {
                 //if (x.Data.SkipGeneration) return;
@@ -63,9 +65,19 @@ namespace TideScriptREPL
                 IntermediaryCodeMeta generatedMeta = x.Data.GenerateCode(meta);
                 foreach (var line in generatedMeta.Code)
                 {
-                    Console.WriteLine(line);
+                    intermediaryCode.Add(line);
                 }
             });
+
+            foreach(string data in meta.GetDataSection())
+            {
+                Console.WriteLine(data);
+            }
+
+            foreach(string s in intermediaryCode)
+            {
+                Console.WriteLine(s);
+            }
         }
     }
 }
