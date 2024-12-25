@@ -62,6 +62,11 @@ namespace Lexer.AST
         {
             return $"'{Value.ToString()}'";
         }
+
+        public override IntermediaryCodeMeta GenerateCode(CompilationMeta MetaData)
+        {
+            return new IntermediaryCodeMeta(new string[0], false);
+        }
     }
 
     public enum OperatorTypes { ADD, SUBTRACT, MULTIPLY, DIVIDE, LESSTHAN, GREATERTHAN, EQUAL }
@@ -100,6 +105,11 @@ namespace Lexer.AST
         {
             return Type + ":" + Name;
         }
+
+        public override IntermediaryCodeMeta GenerateCode(CompilationMeta MetaData)
+        {
+            return new IntermediaryCodeMeta(new string[0], false);
+        }
     }
 
     internal class ParanEnd : ASTExpression { }
@@ -122,12 +132,36 @@ namespace Lexer.AST
 
         public override IntermediaryCodeMeta GenerateCode(CompilationMeta MetaData)
         {
-            if (RHS is Literal value)
-                return new IntermediaryCodeMeta(
-                    new string[1] { $"Ori {MetaData.LookupVariable(((Variable)LHS).Name)}, {(value.GetValue())}" },
-                    false);
+            Variable LeftVar = (Variable)LHS;
+
+            if (LeftVar.Type == "NUMBER")
+            {
+                if (RHS is Literal value)
+                    return new IntermediaryCodeMeta(
+                        new string[1] { $"Li $t{MetaData.GetTemporaryRegister(MetaData.LookupVariable(LeftVar.Name))}, {(value.GetValue())}" },
+                        false);
+            }
             else
-                return base.GenerateCode(MetaData);
+            {
+                int tempRegister = MetaData.GetTemporaryRegister(MetaData.LookupVariable(LeftVar.Name));
+
+                if (RHS is Variable)
+                {
+                    int RHtempRegister = MetaData.GetTemporaryRegister(MetaData.LookupVariable((RHS as Variable).Name));
+
+                    return new IntermediaryCodeMeta(
+                        new string[1] { $"Li $t{tempRegister}, $t{RHtempRegister}" },
+                        false);
+                }
+
+                string variableLabel = MetaData.LookupLabelByHashCode((RHS as Literal).GetValue().GetHashCode());
+
+                return new IntermediaryCodeMeta(
+                    new string[1] { $"Li $t{tempRegister}, {variableLabel}" },
+                    false);
+            }
+
+            return base.GenerateCode(MetaData);
         }
     }
 

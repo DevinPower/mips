@@ -24,17 +24,26 @@ namespace TideScriptREPL
         {
             //var Code = "while (i < 10) { i = 2;\nj = 5; 9 * 2 / i;};";
 
-            //var Code = "var x = 10;\n" +
-            //    "var y = 33;\n" +
-            //    "2 * y;\n";
+            var Code = "var x = 10;\n" +
+                "var y = 33;\n" +
+                "var z = 2 * y;\n" +
+                "var label = \"hey\";\n" + 
+                "label = \"hello\";\n" +
+                "y = 3;\n" +
+                "y = 545;\n" + 
+                "var l = x;\n";
 
-            var Code = "var left = 10;\n" +
-                "var right = 20;\n" +
-                "var third = \"test \\\"value\\\" string\";\n" +
-                "right + third;";
+            //var Code = "var left = 10;\n" +
+            //    "var right = 20;\n" +
+            //    "var third = \"test \\\"value\\\" string\";\n" +
+            //    "right + third;";
 
             //var Code = "var x = (9 * 7 * 67);\n" +
             //    "var y = 6;";
+
+            //var Code = "var label = \"my test\";\n" +
+            //    "var num = 44;\n" +
+            //    "label = \"mt\";";
 
             while (true)
             {
@@ -69,6 +78,7 @@ namespace TideScriptREPL
                 }
             });
 
+            Console.ForegroundColor = ConsoleColor.Green;
             foreach(string data in meta.GetDataSection())
             {
                 Console.WriteLine(data);
@@ -78,6 +88,7 @@ namespace TideScriptREPL
             {
                 Console.WriteLine(s);
             }
+            Console.ForegroundColor = ConsoleColor.White;
         }
     }
 }

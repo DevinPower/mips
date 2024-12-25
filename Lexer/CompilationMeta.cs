@@ -11,11 +11,11 @@ namespace Lexer
     { 
         public int Position { get; }
         string Value;
-        LiteralTypes Type;
+        public LiteralTypes Type { get; private set; }
 
-        public string GetValue()
+        public string? GetValue()
         {
-            if (Type == LiteralTypes.NUMBER) return $".word {Value}";
+            if (Type == LiteralTypes.NUMBER) return null;
             if (Type == LiteralTypes.STRING) return $".asciiz {Value}";
             return $";unhandled compilation data entry for {Value}";
         }
@@ -33,16 +33,29 @@ namespace Lexer
         public Dictionary<string, CompilationDataEntry> Variables = new Dictionary<string, CompilationDataEntry>();
         static int _dataCount = 0;
         static int[] _Registers = new int[8] { -1, -1, -1, -1, -1, -1, -1, -1 };
+        static List<string> _VariableNames = new List<string>();
 
         public int LookupVariable(string Name)
         {
-            return Variables[Name].Position;
+            if (!_VariableNames.Contains(Name))
+                _VariableNames.Add(Name);
+            return _VariableNames.IndexOf(Name);
+        }
+
+        public string LookupLabelByHashCode(int HashCode)
+        {
+            return Variables.Keys.ToList().First((x) => x == HashCode.ToString());
+        }
+
+        public string GetVariableType(string Name)
+        {
+            return Variables[Name].Type.ToString();
         }
 
         public void PushInt(string Name, int DefaultValue)
         {
             if (Variables.ContainsKey(Name))
-                return;// throw new Exception($"Variable {Name} already declared.");
+                throw new Exception($"Variable {Name} already declared.");
 
             Variables.Add(Name, new CompilationDataEntry(_dataCount += 1, DefaultValue.ToString(), LiteralTypes.NUMBER));
         }
@@ -83,9 +96,11 @@ namespace Lexer
             DataSection.Add(".data");
             foreach (var variableKey in Variables.Keys)
             {
-                DataSection.Add($"{variableKey}: {Variables[variableKey].GetValue()}");
+                string? value = Variables[variableKey].GetValue();
+                if (value == null) continue;
+                DataSection.Add($"{variableKey}: {value}");
             }
-
+            DataSection.Add(".main");
             return DataSection.ToArray();
         }
     }

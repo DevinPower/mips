@@ -29,10 +29,13 @@ namespace Lexer
                     //Declaration
                     if (Previous().Value == "var")
                     {
-                        if (Int32.TryParse(Peek().Value, out int literalVal))
+                        string VarName = Peek().Value;
+                        string initialValue = PeekAhead(2).Value;
+
+                        if (Int32.TryParse(initialValue, out int literalVal))
                         {
-                            Variable currentExpression = new Variable(Peek().Value, "int");
-                            _meta.PushInt(Peek().Value, -1);
+                            Variable currentExpression = new Variable(Peek().Value, "NUMBER");
+                            _meta.PushInt(Peek().Value, literalVal);
 
                             current++;
                             Expressions.Push(currentExpression);
@@ -41,8 +44,8 @@ namespace Lexer
                         }
                         else
                         {
-                            Variable currentExpression = new Variable(Peek().Value, "string");
-                            _meta.PushString(Peek().Value, "S");
+                            Variable currentExpression = new Variable(Peek().Value, "STRING");
+                            _meta.PushString(Peek().Value, initialValue);
 
                             current++;
                             Expressions.Push(currentExpression);
@@ -111,9 +114,11 @@ namespace Lexer
 
             if (IsMatch(TokenTypes.Identifier))
             {
-                Variable currentExpression = new Variable(Previous().Value, "var");
-                Expressions.Push(currentExpression);
+                Variable currentExpression = new Variable(Previous().Value, 
+                    _meta.GetVariableType(Previous().Value));
 
+                Expressions.Push(currentExpression);
+                
                 return currentExpression;
             }
 
@@ -158,12 +163,26 @@ namespace Lexer
 
             if (IsMatch(TokenTypes.Literal))
             {
-                _meta.PushString("LitTest"+Previous().Value.GetHashCode(), Previous().Value);
-                Literal literal = new Literal(LiteralTypes.NUMBER, Previous().Value);
+                string PreviousValue = Previous().Value;
 
-                Expressions.Push(literal);
+                if (Int32.TryParse(PreviousValue, out int result))
+                {
+                    //_meta.PushInt(Previous().Value.GetHashCode().ToString(), result);
+                    Literal literal = new Literal(LiteralTypes.NUMBER, result);
 
-                return literal;
+                    Expressions.Push(literal);
+
+                    return literal;
+                }
+                else
+                {
+                    _meta.PushString(Previous().Value.GetHashCode().ToString(), PreviousValue);
+                    Literal literal = new Literal(LiteralTypes.STRING, PreviousValue);
+
+                    Expressions.Push(literal);
+
+                    return literal;
+                }
             }
 
             if (IsMatch(TokenTypes.Nothing) || IsMatch(TokenTypes.Comment)) return null;   //Do Nothing
@@ -261,6 +280,11 @@ namespace Lexer
         Token Peek() 
         {
             return _tokens[current]; 
+        }
+
+        Token PeekAhead(int index)
+        {
+            return _tokens[current + index];
         }
 
     }
