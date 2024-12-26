@@ -201,7 +201,11 @@ public class Computer
         OP_000011 op12 = new OP_000011();
         op12.LoadOperations();
 
+        OP_000100 op13 = new OP_000100();
+        op13.LoadOperations();
+
         InstructionProcessors.Add(0, op0);
+        InstructionProcessors.Add(4, op13);
         InstructionProcessors.Add(8, op1);
         InstructionProcessors.Add(9, op2);
         InstructionProcessors.Add(12, op3);

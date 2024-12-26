@@ -20,7 +20,7 @@
         {
             Operations = new List<OperationWrapper<(Computer Computer, int rs, int rt, int offset)>>();
             
-            Operations.Add(new OperationWrapper<(Computer Computer, int rs, int rt, int offset)>(nameof(Beq), 32, Beq, GetRtImmediateInstructions()));
+            Operations.Add(new OperationWrapper<(Computer Computer, int rs, int rt, int offset)>(nameof(Beq), 32, Beq, GetRsRtOffsetInstructions()));
         }
 
         static void Beq((Computer Computer, int rs, int rt, int offset) passedArgs)

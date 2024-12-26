@@ -15,7 +15,7 @@ namespace Lexer
 
         public string? GetValue()
         {
-            if (Type == LiteralTypes.NUMBER) return null;
+            if (Type == LiteralTypes.NUMBER) return $".asciiz {Value}";
             if (Type == LiteralTypes.STRING) return $".asciiz {Value}";
             return $";unhandled compilation data entry for {Value}";
         }
@@ -70,11 +70,14 @@ namespace Lexer
 
         public int GetTemporaryRegister(int VariableIndex)
         {
-            for (int i = 0; i < _Registers.Length; i++)
+            if (VariableIndex != -2)
             {
-                if (_Registers[i] == VariableIndex)
+                for (int i = 0; i < _Registers.Length; i++)
                 {
-                    return i;
+                    if (_Registers[i] == VariableIndex)
+                    {
+                        return i;
+                    }
                 }
             }
 

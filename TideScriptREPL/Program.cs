@@ -1,6 +1,8 @@
 ﻿using Lexer;
 using System.Reflection.Metadata.Ecma335;
 using System.Text.RegularExpressions;
+using mips;
+using Microsoft.VisualBasic;
 
 namespace TideScriptREPL
 {
@@ -22,9 +24,14 @@ namespace TideScriptREPL
 
         static void REPL()
         {
-            //var Code = "while (i < 10) { i = 2;\nj = 5; 9 * 2 / i;};";
+            //var Code = "var i = 0;\n" +
+            //    "while (i < 10) { i = 2;};\n" +
+            //    "var b = 22;\n";
 
-            var Code = "var x = 10;\n" +
+            var Code = "var i = 4124;\n" +
+                "var z = 1212;\n";
+
+            var Code2 = "var x = 10;\n" +
                 "var y = 33;\n" +
                 "var z = 2 * y;\n" +
                 "var label = \"hey\";\n" + 
@@ -48,11 +55,18 @@ namespace TideScriptREPL
             while (true)
             {
                 string Input = Console.ReadLine();
-                Compile(Code);
+                var ic = Compile(Code);
+
+                Computer c = new Computer(128);
+                c.Compile(ic);
+
+                c.ProcessFull();
+
+                c.DumpMemory();
             }
         }
 
-        static void Compile(string FileName)
+        static string[] Compile(string FileName)
         {
             //string Code = File.ReadAllText(FileName);
 
@@ -66,29 +80,24 @@ namespace TideScriptREPL
             Parser parser = new Parser(tokens, meta);
             var result = parser.Parse();
 
-            List<string> intermediaryCode = new List<string>();
-            result.PostOrderTraversal((x) =>
-            {
-                //if (x.Data.SkipGeneration) return;
-
-                IntermediaryCodeMeta generatedMeta = x.Data.GenerateCode(meta);
-                foreach (var line in generatedMeta.Code)
-                {
-                    intermediaryCode.Add(line);
-                }
-            });
+            string[] intermediaryCode = ICWalker.GenerateCodeRecursive(result, meta);
+            List<string> TotalProgram = new List<string>();
 
             Console.ForegroundColor = ConsoleColor.Green;
             foreach(string data in meta.GetDataSection())
             {
                 Console.WriteLine(data);
+                TotalProgram.Add(data);
             }
 
             foreach(string s in intermediaryCode)
             {
                 Console.WriteLine(s);
+                TotalProgram.Add(s);
             }
             Console.ForegroundColor = ConsoleColor.White;
+
+            return TotalProgram.ToArray();
         }
     }
 }

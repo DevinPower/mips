@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -10,19 +11,26 @@ namespace Lexer
     //TODO: Delete
     public class ICWalker
     {
-        public static void Walk(Node<ASTExpression> Root, CompilationMeta CompilationMeta)
+        public static string[] GenerateCodeRecursive(Node<ASTExpression> Expressions, CompilationMeta Meta, bool ForceGeneration = false)
         {
-            
+            List<string> intermediaryCode = new List<string>();
+            Expressions.PostOrderTraversal((x) =>
+            {
+                //if (x.Data.SkipGeneration) return;
+
+                IntermediaryCodeMeta generatedMeta = x.Data.GenerateCode(Meta);
+                foreach (var line in generatedMeta.Code)
+                {
+                    intermediaryCode.Add(line);
+                }
+            }, ForceGeneration);
+
+            return intermediaryCode.ToArray();
         }
 
-        static void HandleNode(Node<ASTExpression> Node, CompilationMeta Meta)
+        public static string GetFirstRegister(string Code)
         {
-            foreach (var child in Node.Children)
-            {
-                //child.PostOrderTraversal(Meta);
-            }
-
-            //do stuff
+            return Code.Split(new[] { ' ', ',', '\t' }, StringSplitOptions.RemoveEmptyEntries)[1];
         }
     }
 }

@@ -11,6 +11,7 @@ namespace Lexer.AST
     {
         public Node<ASTExpression> TreeRepresentation { get; private set; }
         public virtual bool SkipGeneration { get { return false; } }
+        public virtual bool SkipChildGeneration { get {  return false; } }
 
         public void SetTreeRepresentation(Node<ASTExpression> TreeNode)
         {
@@ -83,9 +84,11 @@ namespace Lexer.AST
             return new string[] { "+", "-", "*", "÷", "<", ">", "=="}[(int)Type];
         }
 
-        public override IntermediaryCodeMeta GenerateCode(CompilationMeta MetaData)
+        public string GetCommand(bool Immediate, string Result, string Op1, string Op2)
         {
-            return new IntermediaryCodeMeta(new string[1] { "MUL B, A" }, true );
+            return new string[] { $"Add {Result}, {Op1}, {Op2}", $"Sub {Result}, {Op1}, {Op2}", 
+                $"Mul {Result}, {Op1}, {Op2}", $"Div {Result}, {Op1}, {Op2}",
+                $"Slt {Result}, {Op1}, {Op2}", $"Bgt {Result}, {Op1}, {Op2}", $"Beq {Result}, {Op1}, {Op2}" }[(int)Type];
         }
     }
 
@@ -119,6 +122,7 @@ namespace Lexer.AST
     {
         public Variable LHS { get; private set; }
         public Expression RHS { get; private set; }
+
         public Assignment(Variable LHS, Expression RHS)
         {
             this.LHS = LHS;
@@ -167,6 +171,8 @@ namespace Lexer.AST
 
     internal class WhileLoop : ASTExpression
     {
+        public override bool SkipChildGeneration { get { return true; } }
+
         Expression Condition;
         Expression Body;
 
@@ -179,6 +185,32 @@ namespace Lexer.AST
         public override string ToString()
         {
             return "loop->" + Condition.ToString() + "," + Body.ToString();
+        }
+
+        public override IntermediaryCodeMeta GenerateCode(CompilationMeta MetaData)
+        {
+            string[] ConditionCode = ICWalker.GenerateCodeRecursive(Condition.TreeRepresentation, MetaData, true);
+            string[] BodyCode = ICWalker.GenerateCodeRecursive(Body.TreeRepresentation, MetaData, true);
+
+            string endGuid = Guid.NewGuid().ToString().Replace("-", "");
+            string startGuid = Guid.NewGuid().ToString().Replace("-", "");
+
+            string JumpRegister = ICWalker.GetFirstRegister(ConditionCode[2]);
+
+
+            ConditionCode[0] = $"{startGuid}: {ConditionCode[0]}";
+
+            List<string> AllCode = new List<string>();
+            AllCode.Add(";BEGIN LOOP-------------------------------");
+            AllCode.AddRange(ConditionCode);
+            AllCode.Add($"Beq {JumpRegister}, 1, {endGuid}");
+            AllCode.AddRange(BodyCode);
+            AllCode.Add($"J {startGuid}");
+            AllCode.Add($"{endGuid}:");
+            AllCode.Add(";END LOOP---------------------------------");
+
+
+            return new IntermediaryCodeMeta(AllCode.ToArray(), false);
         }
     }
 
@@ -211,8 +243,8 @@ namespace Lexer.AST
             }
             else
             {
-                leftRegister = MetaData.GetTemporaryRegister(-1);
-                LHSLoad = $"Ori $t{leftRegister}, {(LHS as Literal).GetValue()}";
+                leftRegister = MetaData.GetTemporaryRegister(-2);
+                LHSLoad = $"Ori $t{leftRegister}, $zero, {(LHS as Literal).GetValue()}";
             }
 
             string RHSLoad = "";
@@ -224,11 +256,14 @@ namespace Lexer.AST
             }
             else
             {
-                rightRegister = MetaData.GetTemporaryRegister(-1);
-                RHSLoad = $"Ori $t{rightRegister}, {(RHS as Literal).GetValue()}";
+                rightRegister = MetaData.GetTemporaryRegister(-2);
+                RHSLoad = $"Ori $t{rightRegister}, $zero, {(RHS as Literal).GetValue()}";
             }
 
-            return new IntermediaryCodeMeta(new string[3] { LHSLoad, RHSLoad, $"MUL $t{leftRegister}, $t{rightRegister}" }, true );
+            int resultRegister = MetaData.GetTemporaryRegister(-2);
+
+            return new IntermediaryCodeMeta(new string[3] { LHSLoad, RHSLoad, 
+                Operator.GetCommand(false, $"$t{resultRegister}", $"$t{leftRegister}", $"$t{rightRegister}") }, true );
         }
     }
 }

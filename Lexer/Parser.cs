@@ -70,10 +70,24 @@ namespace Lexer
                     Node<ASTExpression> loopNode = ASTRoot.AddChild(loop);
 
                     Expression LoopContents = new Expression();
+                    Expression LoopCondition = new Expression();
+                    var LoopConditionAST = loopNode.AddChild(LoopCondition);
                     var LoopContentsAST = loopNode.AddChild(LoopContents);
 
-                    subRoot.Children[0].Children.ForEach(child => { loopNode.AddChild(child); });
-                    subRoot.Children[1].Children.ForEach(child => { LoopContentsAST.AddChild(child); });
+                    subRoot.Children[0].Children.ForEach(child => { 
+                        LoopConditionAST.AddChild(child); 
+                        child.Data.SetTreeRepresentation(child); 
+                    });
+                    subRoot.Children[1].Children.ForEach(child => { 
+                        LoopContentsAST.AddChild(child); 
+                        child.Data.SetTreeRepresentation(child); 
+                    });
+
+                    LoopConditionAST.Data.SetTreeRepresentation(LoopConditionAST);
+                    LoopContentsAST.Data.SetTreeRepresentation(LoopContentsAST);
+
+                    subRoot.Children[0].Data.SetTreeRepresentation(subRoot.Children[0]);
+                    subRoot.Children[1].Data.SetTreeRepresentation(subRoot.Children[1]);
 
                     Expressions.Push(loop);
 

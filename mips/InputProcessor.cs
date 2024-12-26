@@ -62,7 +62,16 @@ namespace mips
             {
                 Match match = Regex.Match(Line, PseudoInstruction);
                 if (match.Success)
-                    return _pseudoInstructions[PseudoInstruction].Invoke(match);
+                {
+                    string Label = "";
+                    if (Line.Contains(':'))
+                        Label = Line.Split(':')[0] + ": ";
+
+                    string[] Lines = _pseudoInstructions[PseudoInstruction].Invoke(match);
+                    Lines[0] = Label + Lines[0];
+
+                    return Lines;
+                }
             }
 
             return new string[] { Line };
@@ -78,6 +87,12 @@ namespace mips
             if (SplitLine[0][SplitLine[0].Length - 1] == ':')
             {
                 string LabelName = SplitLine[0].Remove(SplitLine[0].Length - 1, 1);
+                if (SplitLine.Length == 1)
+                {
+                    LabelPositions.Add(LabelName, addressPointer);
+                    return;
+                }
+
                 Line = Line.Substring(SplitLine[0].Length + 1, Line.Length - SplitLine[0].Length - 1);
                 SplitLine = Line.Split(new[] { ' ', ',', '\t' }, StringSplitOptions.RemoveEmptyEntries);
                 LabelPositions.Add(LabelName, addressPointer);
@@ -91,7 +106,7 @@ namespace mips
 
                 switch (op)
                 {
-                    case "data":
+                    case "main":
                         Owner.Jump(addressPointer);
                         break;
                     case "asciiz":
@@ -138,6 +153,8 @@ namespace mips
             if (SplitLine[0][SplitLine[0].Length - 1] == ':')
             {
                 SplitLine = Line.Substring(SplitLine[0].Length, Line.Length - SplitLine[0].Length).Split(new[] { ' ', ',', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                if (SplitLine.Length == 0)
+                    return -1;
                 Line = Line.Substring(SplitLine[0].Length, Line.Length - SplitLine[0].Length);
             }
 

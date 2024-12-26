@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Lexer\Lexer.csproj" />
+    <ProjectReference Include="..\mips\mips.csproj" />
   </ItemGroup>
 
 </Project>
