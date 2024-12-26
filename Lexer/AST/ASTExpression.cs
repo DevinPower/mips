@@ -37,6 +37,25 @@ namespace Lexer.AST
         }
     }
 
+    internal class MachineCode : ASTExpression
+    {
+        string Code { get; set; }
+        public MachineCode(string Code)
+        {
+            this.Code = Code;
+        }
+
+        public override IntermediaryCodeMeta GenerateCode(CompilationMeta MetaData)
+        {
+            return new IntermediaryCodeMeta(new string[1] { Code }, true);
+        }
+
+        public override string ToString()
+        {
+            return $"MC-[{Code}";
+        }
+    }
+
     internal class Operand : Expression
     {
     }
@@ -158,7 +177,7 @@ namespace Lexer.AST
                         false);
                 }
 
-                string variableLabel = MetaData.LookupLabelByHashCode((RHS as Literal).GetValue().GetHashCode());
+                string variableLabel = MetaData.LookupLabelByHashCode(ICWalker.GetMachineHash((RHS as Literal).GetValue()));
 
                 return new IntermediaryCodeMeta(
                     new string[1] { $"Li $t{tempRegister}, {variableLabel}" },
@@ -211,6 +230,41 @@ namespace Lexer.AST
 
 
             return new IntermediaryCodeMeta(AllCode.ToArray(), false);
+        }
+    }
+
+    internal class Function : ASTExpression
+    {
+        public override bool SkipChildGeneration { get { return true; } }
+        public string FunctionName { get; private set; }
+
+        Expression Body;
+
+        public Function(string FunctionName, Expression Body)
+        {
+            this.FunctionName = FunctionName;
+            this.Body = Body;
+        }
+
+        public override string ToString()
+        {
+            return $"func ({FunctionName})->" + Body.ToString();
+        }
+
+        public override IntermediaryCodeMeta GenerateCode(CompilationMeta MetaData)
+        {
+            List<string> BodyCode = new List<string>();
+            List<string> GeneratedCode = ICWalker.GenerateCodeRecursive(Body.TreeRepresentation, MetaData, true).ToList();
+
+            string FuncEnd = System.Guid.NewGuid().ToString().Replace("-", "");
+
+            BodyCode.Add($"J {FuncEnd}");
+            GeneratedCode[0] = $"{FunctionName}: " + GeneratedCode[0];
+            BodyCode.AddRange(GeneratedCode);
+            BodyCode.Add("Jr $ra");
+            BodyCode.Add($"{FuncEnd}: ");
+
+            return new IntermediaryCodeMeta(BodyCode.ToArray(), false);
         }
     }
 

@@ -15,8 +15,8 @@ namespace Lexer
 
         public string? GetValue()
         {
-            if (Type == LiteralTypes.NUMBER) return $".asciiz {Value}";
-            if (Type == LiteralTypes.STRING) return $".asciiz {Value}";
+            if (Type == LiteralTypes.NUMBER) return null;
+            if (Type == LiteralTypes.STRING) return $".asciiz \"{Value}\"";
             return $";unhandled compilation data entry for {Value}";
         }
 
@@ -28,12 +28,33 @@ namespace Lexer
         }
     }
 
+    public class FunctionMeta
+    {
+        public string Name { get; private set; }
+
+        public FunctionMeta(string Name) 
+        { 
+            this.Name = Name;
+        }
+    }
+
     public class CompilationMeta
     {
         public Dictionary<string, CompilationDataEntry> Variables = new Dictionary<string, CompilationDataEntry>();
         static int _dataCount = 0;
         static int[] _Registers = new int[8] { -1, -1, -1, -1, -1, -1, -1, -1 };
         static List<string> _VariableNames = new List<string>();
+        static List<FunctionMeta> _Functions = new List<FunctionMeta>();
+
+        public void AddFunction(string FunctionName)
+        {
+            _Functions.Add(new FunctionMeta(FunctionName));
+        }
+
+        public bool FunctionExists(string FunctionName)
+        {
+            return _Functions.Count(x=>x.Name == FunctionName) == 1;
+        }
 
         public int LookupVariable(string Name)
         {

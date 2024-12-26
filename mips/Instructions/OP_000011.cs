@@ -25,7 +25,7 @@
 
         static void Jal((Computer Computer, int target) passedArgs)
         {
-            passedArgs.Computer.StoreMemory(passedArgs.Computer.GetProgramCounter(), passedArgs.Computer.GetRegisterAddress("$fp"));
+            passedArgs.Computer.StoreMemory(passedArgs.Computer.GetProgramCounter(), passedArgs.Computer.GetRegisterAddress("$ra"));
             passedArgs.Computer.Jump(passedArgs.target);
         }
 

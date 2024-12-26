@@ -1,6 +1,7 @@
 ﻿using Lexer.AST;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -26,6 +27,47 @@ namespace Lexer
             {
                 if (CheckType(TokenTypes.Identifier))
                 {
+                    if (Previous().Value == "function")
+                    {
+                        string functionName = Peek().Value;
+
+                        Advance();
+
+                        Stack<ASTExpression> stack = new Stack<ASTExpression>();
+                        Node<ASTExpression> subRoot = new Node<ASTExpression>(null);
+                        //ASTExpression parsedExpression = ConsumeToken(stack, subRoot);
+                        
+                        Advance();  //TODO: PARSE ARGUMENTS?
+                        Advance();
+                        
+                        
+                        if (Peek().Value != "{")
+                            throw new Exception($"Unhandled exception for not seeing scriptblock on function {functionName}");
+
+                        ASTExpression parsedBody = ConsumeToken(stack, subRoot);
+
+                        ASTExpression function = new Function(functionName, (Expression)parsedBody);
+                        Node<ASTExpression> functionNode = ASTRoot.AddChild(function);
+
+                        //Expression LoopCondition = new Expression();
+                        //var LoopConditionAST = functionNode.AddChild(LoopCondition);
+                        var LoopContentsAST = functionNode.AddChild(parsedBody);
+
+                        subRoot.Children[0].Children.ForEach(child => {
+                            LoopContentsAST.AddChild(child);
+                            child.Data.SetTreeRepresentation(child);
+                        });
+
+                        LoopContentsAST.Data.SetTreeRepresentation(LoopContentsAST);
+                        subRoot.Children[0].Data.SetTreeRepresentation(subRoot.Children[0]);
+
+                        Expressions.Push(function);
+
+                        _meta.AddFunction(functionName);
+
+                        return function;
+                    }
+
                     //Declaration
                     if (Previous().Value == "var")
                     {
@@ -128,12 +170,32 @@ namespace Lexer
 
             if (IsMatch(TokenTypes.Identifier))
             {
+                if (_meta.FunctionExists(Previous().Value))
+                {
+                    MachineCode jumpInstruction = new MachineCode($"Jal {Previous().Value}");
+
+                    ASTRoot.AddChild(jumpInstruction);
+                    Expressions.Push(jumpInstruction);
+
+                    return jumpInstruction;
+                }
+
                 Variable currentExpression = new Variable(Previous().Value, 
                     _meta.GetVariableType(Previous().Value));
 
                 Expressions.Push(currentExpression);
                 
                 return currentExpression;
+            }
+
+            if (IsMatch(TokenTypes.MachineCode))
+            {
+                MachineCode machineExpression = new MachineCode(Previous().Value);
+
+                ASTRoot.AddChild(machineExpression);
+                Expressions.Push(machineExpression);
+
+                return machineExpression;
             }
 
             if (IsMatch(TokenTypes.Operator))
@@ -190,7 +252,7 @@ namespace Lexer
                 }
                 else
                 {
-                    _meta.PushString(Previous().Value.GetHashCode().ToString(), PreviousValue);
+                    _meta.PushString(ICWalker.GetMachineHash(Previous().Value).ToString(), PreviousValue);
                     Literal literal = new Literal(LiteralTypes.STRING, PreviousValue);
 
                     Expressions.Push(literal);

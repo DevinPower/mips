@@ -32,5 +32,10 @@ namespace Lexer
         {
             return Code.Split(new[] { ' ', ',', '\t' }, StringSplitOptions.RemoveEmptyEntries)[1];
         }
+
+        public static int GetMachineHash(object From)
+        {
+            return (Math.Abs(From.GetHashCode()));
+        }
     }
 }

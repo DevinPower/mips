@@ -120,15 +120,12 @@ namespace Lexer
                     {
                         if (parentExpression.Data.SkipChildGeneration)
                         {
-                            Console.WriteLine($"skipping from {parentExpression.Data.ToString()}");
                             return true;
                         }
                     }
                     levels++;
                     parentExpression = parentExpression.Parent;
                 }
-
-                Console.WriteLine($"checked {levels} levels ({Data.ToString()})");
             }
 
             return false;

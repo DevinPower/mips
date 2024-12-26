@@ -8,7 +8,7 @@ using System.Xml.Linq;
 
 namespace Lexer
 {
-    public enum TokenTypes { Error, Nothing, Operator, Identifier, Keyword, Separator, Literal, Comment }
+    public enum TokenTypes { Error, Nothing, Operator, Identifier, Keyword, Separator, Literal, Comment, MachineCode }
     public class Token
     {
         public TokenTypes TokenType { get; private set; }
@@ -30,7 +30,7 @@ namespace Lexer
         };
 
         readonly string[] Keywords = new[] {
-            "if", "return", "while", "var"
+            "if", "return", "while", "var", "function"
         };
 
         readonly string[] Separators = new[] {
@@ -88,6 +88,21 @@ namespace Lexer
                     }
 
                     LexedCode.Add((literalString, TokenTypes.Literal));
+
+                    CurrentToken = "";
+                    continue;
+                }
+
+                if (c == '|')
+                {
+                    i += 1;
+                    string machineCode = "";
+                    while (i < Contents.Length && Contents[i] != '\n')
+                    {
+                        machineCode += Contents[i++];
+                    }
+
+                    LexedCode.Add((machineCode, TokenTypes.MachineCode));
 
                     CurrentToken = "";
                     continue;

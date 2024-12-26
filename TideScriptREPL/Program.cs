@@ -28,8 +28,23 @@ namespace TideScriptREPL
             //    "while (i < 10) { i = 2;};\n" +
             //    "var b = 22;\n";
 
-            var Code = "var i = 4124;\n" +
-                "var z = 1212;\n";
+            //var Code = "var i = 4124;\n" +
+            //    "var z = 1212;\n" +
+            //    "var str = \"my string\";\n";
+
+            var SysIo = 
+                "|Ori $v0, $zero, 4\n" +
+                "|LB $a0, PROMPT(0)\n" +
+                "|Syscall\n";
+
+            //var Code = SysIo + "var PROMPT = \"Hello, world!\";\n";
+
+            var Code = "var i = 10;\n" +
+                "function testFunction(){\n" +
+                "   i = 77;\n" +
+                "};\n" +
+                "testFunction();\n" +
+                "var x = 444;\n";
 
             var Code2 = "var x = 10;\n" +
                 "var y = 33;\n" +
