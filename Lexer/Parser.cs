@@ -232,6 +232,9 @@ namespace Lexer
                 if (HandleOperator("/", Expressions, ASTRoot, OperatorTypes.DIVIDE) is var divResult && divResult != null)
                     return divResult;
 
+                if (HandleOperator("+=", Expressions, ASTRoot, OperatorTypes.ADDASSIGN) is var addaResult && addaResult != null)
+                    return addaResult;
+
                 //comparison
                 if (HandleOperator("<", Expressions, ASTRoot, OperatorTypes.LESSTHAN) is var lessResult && lessResult != null)
                     return lessResult;

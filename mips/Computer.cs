@@ -266,26 +266,6 @@ public class Computer
         return result.ToArray();
     }
 
-    public void ProcessOp(string op, int ipResult, string Line)
-    {
-        string[] SplitLine = Line.Split(new[] { ' ', ',', '\t' }, StringSplitOptions.RemoveEmptyEntries);
-
-        string LineRemainder = String.Join(" ", SplitLine.Skip(1));
-        switch (op)
-        {
-            case "data":
-                Jump(ipResult);
-                break;
-            case "asciiz":
-                foreach(char c in LineRemainder)
-                {
-                    StoreMemory((int)c);
-                }
-                StoreMemory(0);
-                break;
-        }
-    }
-
     public void DumpMemory()
     {
         Console.WriteLine("Registers: ");

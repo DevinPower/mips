@@ -15,7 +15,7 @@ namespace Lexer
 
         public string? GetValue()
         {
-            if (Type == LiteralTypes.NUMBER) return null;
+            if (Type == LiteralTypes.NUMBER) return $".word 1";
             if (Type == LiteralTypes.STRING) return $".asciiz \"{Value}\"";
             return $";unhandled compilation data entry for {Value}";
         }

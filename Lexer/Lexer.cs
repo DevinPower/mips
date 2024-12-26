@@ -26,7 +26,7 @@ namespace Lexer
        
         readonly string[] BinaryOperators = new[] { 
             "=", "==", "!=", "<", "<=", ">", ">=",
-            "+", "-", "*", "/", "%"
+            "+", "-", "*", "/", "%", "+=", "-=", "*=", "/="
         };
 
         readonly string[] Keywords = new[] {

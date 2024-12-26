@@ -39,12 +39,16 @@ namespace TideScriptREPL
 
             //var Code = SysIo + "var PROMPT = \"Hello, world!\";\n";
 
-            var Code = "var i = 10;\n" +
-                "function testFunction(){\n" +
-                "   i = 77;\n" +
-                "};\n" +
-                "testFunction();\n" +
-                "var x = 444;\n";
+            //var Code = "var i = 10;\n" +
+            //    "function testFunction(){\n" +
+            //    "   i += 1;\n" +
+            //    "};\n" +
+            //    "testFunction();\n" +
+            //    "var x = 444;\n" +
+            //    "//testFunction();\n";
+
+            var Code = "var num = 1212;\n" +
+                "num += 1;\n";
 
             var Code2 = "var x = 10;\n" +
                 "var y = 33;\n" +

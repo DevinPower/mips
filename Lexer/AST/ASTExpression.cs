@@ -89,7 +89,8 @@ namespace Lexer.AST
         }
     }
 
-    public enum OperatorTypes { ADD, SUBTRACT, MULTIPLY, DIVIDE, LESSTHAN, GREATERTHAN, EQUAL }
+    public enum OperatorTypes { ADD, SUBTRACT, MULTIPLY, DIVIDE, LESSTHAN, GREATERTHAN, EQUAL,
+                                ADDASSIGN, SUBTRACTASSIGN, MULTIPLYASSIGN, DIVIDEASSIGN }
     internal class Operator : ASTExpression
     {
         OperatorTypes Type;
@@ -100,14 +101,26 @@ namespace Lexer.AST
 
         public override string ToString()
         {
-            return new string[] { "+", "-", "*", "÷", "<", ">", "=="}[(int)Type];
+            return new string[] { "+", "-", "*", "÷", "<", ">", "==", 
+                "+=", "-=", "*=", "÷=" }[(int)Type];
         }
 
         public string GetCommand(bool Immediate, string Result, string Op1, string Op2)
         {
             return new string[] { $"Add {Result}, {Op1}, {Op2}", $"Sub {Result}, {Op1}, {Op2}", 
                 $"Mul {Result}, {Op1}, {Op2}", $"Div {Result}, {Op1}, {Op2}",
-                $"Slt {Result}, {Op1}, {Op2}", $"Bgt {Result}, {Op1}, {Op2}", $"Beq {Result}, {Op1}, {Op2}" }[(int)Type];
+                $"Slt {Result}, {Op1}, {Op2}", $"Bgt {Result}, {Op1}, {Op2}", $"Beq {Result}, {Op1}, {Op2}",
+                $"Add {Op1}, {Op1}, {Op2}", "-=", "*=", "/="}[(int)Type];
+        }
+
+        public bool AssignToSelf()
+        {
+            if (Type == OperatorTypes.ADDASSIGN) return true;
+            if (Type == OperatorTypes.SUBTRACTASSIGN) return true;
+            if (Type == OperatorTypes.MULTIPLYASSIGN) return true;
+            if (Type == OperatorTypes.DIVIDEASSIGN) return true;
+
+            return false;
         }
     }
 
@@ -160,9 +173,13 @@ namespace Lexer.AST
             if (LeftVar.Type == "NUMBER")
             {
                 if (RHS is Literal value)
+                {
+                    int tempRegister = MetaData.GetTemporaryRegister(MetaData.LookupVariable(LeftVar.Name));
                     return new IntermediaryCodeMeta(
-                        new string[1] { $"Li $t{MetaData.GetTemporaryRegister(MetaData.LookupVariable(LeftVar.Name))}, {(value.GetValue())}" },
+                        new string[2] { $"Li $t{tempRegister}, {(value.GetValue())}",
+                        $"SB $t{tempRegister}, {LeftVar.Name}(0)"},
                         false);
+                }
             }
             else
             {
@@ -289,11 +306,13 @@ namespace Lexer.AST
         public override IntermediaryCodeMeta GenerateCode(CompilationMeta MetaData)
         {
             string LHSLoad = "";
+            string Store = "";
             int leftRegister = -1;
             if (LHS is Variable lvalue)
             {
                 leftRegister = MetaData.GetTemporaryRegister(MetaData.LookupVariable(lvalue.Name));
-                LHSLoad = $"Li $t{leftRegister}, {lvalue.Name}";
+                LHSLoad = $"LB $t{leftRegister}, {lvalue.Name}(0)";
+                Store = $"SB $t{leftRegister}, {lvalue.Name}(0)";
             }
             else
             {
@@ -306,7 +325,7 @@ namespace Lexer.AST
             if (RHS is Variable rvalue)
             {
                 rightRegister = MetaData.GetTemporaryRegister(MetaData.LookupVariable(rvalue.Name));
-                RHSLoad = $"Li $t{rightRegister}, {rvalue.Name}";
+                RHSLoad = $"LB $t{rightRegister}, {rvalue.Name}(0)";
             }
             else
             {
@@ -314,10 +333,15 @@ namespace Lexer.AST
                 RHSLoad = $"Ori $t{rightRegister}, $zero, {(RHS as Literal).GetValue()}";
             }
 
-            int resultRegister = MetaData.GetTemporaryRegister(-2);
+            int resultRegister = -1;
+            if (Operator.AssignToSelf())
+                resultRegister = leftRegister;
+            else
+                resultRegister = MetaData.GetTemporaryRegister(-2);
 
-            return new IntermediaryCodeMeta(new string[3] { LHSLoad, RHSLoad, 
-                Operator.GetCommand(false, $"$t{resultRegister}", $"$t{leftRegister}", $"$t{rightRegister}") }, true );
+            return new IntermediaryCodeMeta(new string[4] { LHSLoad, RHSLoad, 
+                Operator.GetCommand(false, $"$t{resultRegister}", $"$t{leftRegister}", $"$t{rightRegister}"), 
+                Store }, true );
         }
     }
 }

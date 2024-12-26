@@ -126,7 +126,16 @@ namespace mips
                                 Owner.StoreMemory((int)c, addressPointer++);
                         }
                         Owner.StoreMemory(0, addressPointer++);
-                        //addressPointer += LineRemainder.Length + 1;
+                        break;
+                    case "word":
+                        if (Int32.TryParse(LineRemainder.Trim(), out int result))
+                        {
+                            Owner.StoreMemory(result, addressPointer++);
+                        }
+                        else
+                        {
+                            throw new Exception("Expected int and didn't get one");
+                        }
                         break;
                 }
 
