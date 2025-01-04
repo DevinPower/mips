@@ -13,11 +13,15 @@ namespace Lexer
     {
         public TokenTypes TokenType { get; private set; }
         public string Value { get; private set; }
+        public int StartPosition {  get; private set; }
+        public int EndPosition { get; private set; }
 
-        public Token(TokenTypes tokenType, string value)
+        public Token(TokenTypes tokenType, string value, int startPosition, int endPosition)
         {
             TokenType = tokenType;
             Value = value;
+            StartPosition = startPosition;
+            EndPosition = endPosition;
         }
     }
 
@@ -34,7 +38,7 @@ namespace Lexer
         };
 
         readonly string[] Separators = new[] {
-            ";", "(", ")", "{", "}", "[", "]"
+            ";", "(", ")", "{", "}", "[", "]", "\n"
         };
 
         public Lexer()
@@ -42,26 +46,30 @@ namespace Lexer
 
         }
 
-        public List<Token> Lexicate(string Contents)
+        public List<Token> Lexicate(string Contents, bool ForDraw)
         {
             string CurrentToken = "";
 
-            List<(string, TokenTypes)> LexedCode = new List<(string, TokenTypes)>();
+            List<(string, TokenTypes, int, int)> LexedCode = new List<(string, TokenTypes, int, int)>();
 
             for (int i = 0; i < Contents.Length; i++)
             {
                 char c = Contents[i];
+                int tokenStart = i;
 
                 if (c == '/' && Contents[i + 1] == '/')
                 {
                     i += 2;
-                    string comment = "";
+                    string comment = ForDraw ? "//" : "";
                     while (i < Contents.Length && Contents[i] != '\n')
                     {
                         comment += Contents[i++];
                     }
 
-                    LexedCode.Add((comment, TokenTypes.Comment));
+                    if (Contents[i] == '\n')
+                        i--;
+
+                    LexedCode.Add((comment, TokenTypes.Comment, tokenStart, i));
 
                     CurrentToken = "";
                     continue;
@@ -77,7 +85,11 @@ namespace Lexer
 
                         if (c == '\\')
                         {
-                            escaped = true; 
+                            if (ForDraw) 
+                            { 
+                                literalString += c;
+                            }
+                            escaped = true;
                             continue;
                         }
 
@@ -87,7 +99,10 @@ namespace Lexer
                         escaped = false;
                     }
 
-                    LexedCode.Add((literalString, TokenTypes.Literal));
+                    if (ForDraw)
+                        literalString = $"\"{literalString}\"";
+
+                    LexedCode.Add((literalString, TokenTypes.Literal, tokenStart, i));
 
                     CurrentToken = "";
                     continue;
@@ -102,14 +117,22 @@ namespace Lexer
                         machineCode += Contents[i++];
                     }
 
-                    LexedCode.Add((machineCode, TokenTypes.MachineCode));
+                    if (Contents[i] == '\n')
+                        i--;
+
+                    if (ForDraw)
+                        machineCode = "|" + machineCode;
+
+                    LexedCode.Add((machineCode, TokenTypes.MachineCode, tokenStart, i));
 
                     CurrentToken = "";
                     continue;
                 }
 
                 if (c != ' ')
+                {
                     CurrentToken += c;
+                }
 
                 if (c != ' ' && !Separators.Contains(c.ToString()))
                 {
@@ -123,20 +146,25 @@ namespace Lexer
                     addCAsToken = true;
                 }
 
+                if (char.IsWhiteSpace(c) && ForDraw)
+                {
+                    addCAsToken = true;
+                }
+
                 TokenTypes tokenType = CheckType(CurrentToken.Trim());
 
                 if (tokenType != TokenTypes.Nothing)
-                    LexedCode.Add((CurrentToken, tokenType));
+                    LexedCode.Add((CurrentToken, tokenType, tokenStart, i));
 
                 if (addCAsToken)
-                    LexedCode.Add((c.ToString(), TokenTypes.Separator));
+                    LexedCode.Add((c.ToString(), TokenTypes.Separator, tokenStart, i));
 
                 CurrentToken = "";
             }
 
-            PrintAnalysis(LexedCode);
+            //PrintAnalysis(LexedCode);
 
-            return LexedCode.Select((x) => new Token(x.Item2, x.Item1.Trim())).ToList();
+            return LexedCode.Select((x) => new Token(x.Item2, x.Item1, x.Item3, x.Item4)).ToList();
         }
 
         void PrintAnalysis(List<(string, TokenTypes)> Tokens)

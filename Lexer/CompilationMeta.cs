@@ -41,10 +41,10 @@ namespace Lexer
     public class CompilationMeta
     {
         public Dictionary<string, CompilationDataEntry> Variables = new Dictionary<string, CompilationDataEntry>();
-        static int _dataCount = 0;
-        static int[] _Registers = new int[8] { -1, -1, -1, -1, -1, -1, -1, -1 };
-        static List<string> _VariableNames = new List<string>();
-        static List<FunctionMeta> _Functions = new List<FunctionMeta>();
+        int _dataCount = 0;
+        int[] _Registers = new int[8] { -1, -1, -1, -1, -1, -1, -1, -1 };
+        List<string> _VariableNames = new List<string>();
+        List<FunctionMeta> _Functions = new List<FunctionMeta>();
 
         public void AddFunction(string FunctionName)
         {
@@ -84,7 +84,7 @@ namespace Lexer
         public void PushString(string Name, string DefaultValue)
         {
             if (Variables.ContainsKey(Name))
-                return; // throw new Exception($"Variable {Name} already declared.");
+                throw new Exception($"Variable {Name} already declared.");
 
             Variables.Add(Name, new CompilationDataEntry(_dataCount += DefaultValue.Length, DefaultValue, LiteralTypes.STRING));
         }

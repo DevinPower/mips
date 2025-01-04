@@ -1,7 +1,8 @@
-﻿TEXT: .asciiz "Hello, world from my string!"
+﻿.data
+TEXT: .asciiz "Hello, world from my string!"
 TEXT2: .asciiz "This is my second string"
 PROMPT: .asciiz "Please enter a string!"
-.data
+.main
 Ori $v0, $zero, 4
 LB $a0, PROMPT(0)
 Syscall

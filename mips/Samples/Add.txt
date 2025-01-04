@@ -1,0 +1,7 @@
+﻿.data
+.main
+
+Ori $t0, $zero, 42
+Ori $t1, $zero, 83
+
+Add $t1, $t0, $t2

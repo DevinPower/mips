@@ -15,7 +15,7 @@ namespace Lexer
         int current = 0;
         public Parser(List<Token> Tokens, CompilationMeta CompilationMeta)
         {
-            _tokens = Tokens;
+            _tokens = Tokens.Where((x) => x.TokenType != TokenTypes.Nothing).ToList();
             _meta = CompilationMeta;
         }
 
@@ -42,7 +42,7 @@ namespace Lexer
                         
                         
                         if (Peek().Value != "{")
-                            throw new Exception($"Unhandled exception for not seeing scriptblock on function {functionName}");
+                            throw new Exception($"Unhandled exception for not seeing scriptblock on function {functionName}. Got {Peek().Value}");
 
                         ASTExpression parsedBody = ConsumeToken(stack, subRoot);
 
@@ -180,8 +180,10 @@ namespace Lexer
                     return jumpInstruction;
                 }
 
-                Variable currentExpression = new Variable(Previous().Value, 
-                    _meta.GetVariableType(Previous().Value));
+                Token previous = Previous();
+
+                Variable currentExpression = new Variable(previous.Value,
+                    _meta.GetVariableType(previous.Value));
 
                 Expressions.Push(currentExpression);
                 

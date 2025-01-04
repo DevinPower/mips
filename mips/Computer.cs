@@ -268,7 +268,6 @@ public class Computer
 
     public void DumpMemory()
     {
-        Console.WriteLine("Registers: ");
         int i = 0;
         //foreach (var register in Registers)
         //{
@@ -281,7 +280,12 @@ public class Computer
 
         foreach (var mem in Memory)
         {
-            Console.WriteLine($"{ind.ToString().PadLeft(4, '0')}\t{((char)mem).ToString().Trim()}\t{mem.ToString()}");
+            string index = ind.ToString();
+
+            if (ind < InstructionRegisterDefinitions.Length)
+                index = InstructionRegisterDefinitions[ind].PadLeft(4, ' ');
+
+            Console.WriteLine($"{index.PadLeft(4, '0')}\t{((char)mem).ToString().Trim()}\t{mem.ToString()}");
             ind++;
         }
 

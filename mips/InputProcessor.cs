@@ -225,7 +225,14 @@ namespace mips
                 return LabelPositions[FullLine[ParameterPosition]];
             }
 
-            return Computer.InstructionRegisterDefinitions.ToList().IndexOf(FullLine[ParameterPosition]);
+            int result = Computer.InstructionRegisterDefinitions.ToList().IndexOf(FullLine[ParameterPosition]);
+            
+            if (result == -1)
+            {
+                throw new Exception("Error reading parameter position");
+            }
+
+            return result;
         }
 
         int ReadCalculatedInner(string[] FullLine, string RegisterValue, int Length)
