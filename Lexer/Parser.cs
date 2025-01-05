@@ -77,7 +77,7 @@ namespace Lexer
                         if (Int32.TryParse(initialValue, out int literalVal))
                         {
                             Variable currentExpression = new Variable(Peek().Value, "NUMBER");
-                            _meta.PushInt(Peek().Value, literalVal);
+                            _meta.PushInt(Peek(2).Value, literalVal);
 
                             current++;
                             Expressions.Push(currentExpression);
@@ -87,7 +87,7 @@ namespace Lexer
                         else
                         {
                             Variable currentExpression = new Variable(Peek().Value, "STRING");
-                            _meta.PushString(Peek().Value, initialValue);
+                            _meta.PushString(Peek().Value, Peek().Value);
 
                             current++;
                             Expressions.Push(currentExpression);
@@ -257,7 +257,7 @@ namespace Lexer
                 }
                 else
                 {
-                    _meta.PushString(ICWalker.GetMachineHash(Previous().Value).ToString(), PreviousValue);
+                    //_meta.PushString(Previous(3).Value, PreviousValue);
                     Literal literal = new Literal(LiteralTypes.STRING, PreviousValue);
 
                     Expressions.Push(literal);
@@ -353,14 +353,14 @@ namespace Lexer
             return Previous();
         }
 
-        Token Previous()
+        Token Previous(int Offset = 1)
         {
-            return _tokens[current - 1];
+            return _tokens[current - Offset];
         }
 
-        Token Peek() 
+        Token Peek(int Offset = 0)
         {
-            return _tokens[current]; 
+            return _tokens[current + Offset]; 
         }
 
         Token PeekAhead(int index)

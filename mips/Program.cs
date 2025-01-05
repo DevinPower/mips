@@ -30,12 +30,12 @@ while (true)
 
     string[] contents = System.IO.File.ReadAllLines($"Samples/{file}.txt");
 
-    Computer c = new Computer(512);
-    c.Compile(contents);
-
-    c.ProcessFull();
-
-    c.DumpMemory();
-
-    Console.ReadKey();
+    //Computer c = new Computer(512);
+    //c.Compile(contents);
+    //
+    //c.ProcessFull();
+    //
+    //c.DumpMemory();
+    //
+    //Console.ReadKey();
 }

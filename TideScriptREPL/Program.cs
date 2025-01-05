@@ -60,7 +60,7 @@ namespace TideScriptREPL
 
                             var ic = Compile(GetTokens(l2, Contents, false));
 
-                            Computer c = new Computer(128);
+                            Computer c = new Computer(128, 32);
                             c.Compile(ic);
 
                             c.ProcessFull();

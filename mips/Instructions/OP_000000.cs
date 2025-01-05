@@ -196,7 +196,7 @@
 
         static void Jr((Computer Computer, int rs, int rt, int rd, int sa) passedArgs)
         {
-            passedArgs.Computer.Jump(passedArgs.Computer.Memory[passedArgs.rs]);
+            passedArgs.Computer.Jump(passedArgs.Computer.Memory[passedArgs.rd]);
         }
 
         public int GetOpCode(string InstructionName)

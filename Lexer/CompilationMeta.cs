@@ -81,6 +81,15 @@ namespace Lexer
             Variables.Add(Name, new CompilationDataEntry(_dataCount += 1, DefaultValue.ToString(), LiteralTypes.NUMBER));
         }
 
+        public string PushStaticString(string Value)
+        {
+            string Label = Guid.NewGuid().ToString().Replace("-", "");
+
+            PushString(Label, Value);
+
+            return Label;
+        }
+
         public void PushString(string Name, string DefaultValue)
         {
             if (Variables.ContainsKey(Name))

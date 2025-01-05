@@ -180,6 +180,16 @@ namespace Lexer.AST
                         $"SB $t{tempRegister}, {LeftVar.Name}(0)"},
                         false);
                 }
+
+                if (RHS is Variable RHVariable)
+                {
+                    int tempRegister = MetaData.GetTemporaryRegister(MetaData.LookupVariable(LeftVar.Name));
+
+                    return new IntermediaryCodeMeta(
+                        new string[2] { $"LB $t{tempRegister}, {RHVariable.Name}(0)",
+                        $"SB $t{tempRegister}, {LeftVar.Name}(0)"},
+                        false);
+                }
             }
             else
             {
@@ -194,8 +204,7 @@ namespace Lexer.AST
                         false);
                 }
 
-                string variableLabel = MetaData.LookupLabelByHashCode(ICWalker.GetMachineHash((RHS as Literal).GetValue()));
-
+                string variableLabel = MetaData.PushStaticString((RHS as Literal).GetValue().ToString());
                 return new IntermediaryCodeMeta(
                     new string[1] { $"Li $t{tempRegister}, {variableLabel}" },
                     false);

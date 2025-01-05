@@ -9,10 +9,12 @@ public class Computer
 {
     public int[] Memory { get; set; }
     public List<Peripheral> Peripherals { get; set; }
-    int _memoryPointer = 33;
+    
+    int _programCounter;
+    int _heapPointer;
 
     Action[] _Syscall;
-    int _programCounter = 33;
+    
     public static string[] InstructionRegisterDefinitions = new[] {
         "$zero",
         "$a0",
@@ -32,12 +34,17 @@ public class Computer
     public int LORegister { get; set; }
     static Dictionary<int, Instruction> InstructionProcessors;
 
-    public Computer(int MemorySize)
+    public Computer(int MemorySize, int HeapSize)
     {
         Memory = new int[MemorySize];
-        InitializeRegisters();
+        _programCounter = HeapSize;
+        _heapPointer = HeapSize + 33;
+
+        InitializeRegisters(33);
         LoadInstructionProcessors();
         InitializePeripherals();
+
+        StoreHeap(new[] { 69,69,69, 69, 69, 69 });
 
         _Syscall = new[]
         {
@@ -103,22 +110,26 @@ public class Computer
         return -1;
     }
 
-    void InitializeRegisters()
+    void InitializeRegisters(int StackAddress)
     {
         Memory[0] = 0;
-        Memory[28] = 0;
-        Memory[29] = 0;
+        Memory[GetRegisterAddress("$sp")] = StackAddress;
     }
 
-    public void StoreMemory(int Value)
+    public void StoreHeap(int[] Value)
     {
-        Memory[_memoryPointer++] = Value;
+        for (int i = Value.Length - 1; i > 0; i--)
+        {
+            Memory[_heapPointer - i] = Value[i];
+        }
+
+        _heapPointer -= Value.Length;
     }
 
     public int ReserveMemory(int Size)
     {
-        int memoryAddress = _memoryPointer;
-        _memoryPointer += Size;
+        int memoryAddress = _heapPointer;
+        _heapPointer += Size;
         return memoryAddress;
     }
 
@@ -130,7 +141,7 @@ public class Computer
 
     public int GetMemoryPointer()
     {
-        return _memoryPointer;
+        return _heapPointer;
     }
 
     public bool StepProgram()
@@ -237,7 +248,7 @@ public class Computer
         var ops = GetAllInstructions();
 
         List<int> result = new List<int>();
-        InputProcessor ip = new InputProcessor(this, ops, _memoryPointer);
+        InputProcessor ip = new InputProcessor(this, ops, _heapPointer);
 
         List<string> expandedProgram = new List<string>();
 
@@ -261,20 +272,11 @@ public class Computer
             result.Add(ip.ProcessLine(ip.GetLineWithoutComments(Line)));
         }
 
-        //ip.DumpLabels();
-
         return result.ToArray();
     }
 
     public void DumpMemory()
     {
-        int i = 0;
-        //foreach (var register in Registers)
-        //{
-        //    Console.WriteLine($"{InstructionRegisterDefinitions[i]}\t\t\t\t{register.ToString()}");
-        //    i++;
-        //}
-
         Console.WriteLine("Memory: ");
         int ind = 0;
 
