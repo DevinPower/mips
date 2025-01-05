@@ -38,6 +38,9 @@ namespace TideScriptREPL
 
             Lexer.Lexer l = new Lexer.Lexer();
 
+            DrawContents(l, Contents);
+            DrawFooter();
+
             while (true)
             {
                 ConsoleKeyInfo Key = Console.ReadKey(true);
@@ -63,6 +66,9 @@ namespace TideScriptREPL
                             c.ProcessFull();
 
                             c.DumpMemory();
+
+                            DrawAlert("Press any key to exit", ConsoleColor.Red);
+
                             Console.ReadKey();
                         }
                         catch (Exception ex)
@@ -184,6 +190,7 @@ namespace TideScriptREPL
                 }
 
                 DrawContents(l, Contents);
+                DrawFooter();
                 Console.SetCursorPosition(currentPosition, currentLine);
             }
         }
@@ -257,6 +264,60 @@ namespace TideScriptREPL
             //
             //    Console.Write("\n");
             //}
+        }
+
+        static void DrawAlert(string Message, ConsoleColor Color)
+        {
+            Console.SetCursorPosition(0, Console.BufferHeight - 1);
+            ConsoleColor startColor = Console.ForegroundColor;
+
+            Console.ForegroundColor = ConsoleColor.Black;
+            Console.BackgroundColor = Color;
+
+            Console.Write(Message);
+
+            Console.ForegroundColor = Color;
+            int startX = Console.GetCursorPosition().Left;
+            for (int i = startX; i < Console.BufferWidth; i++)
+            {
+                Console.Write('█');
+            }
+
+            Console.BackgroundColor = ConsoleColor.Black;
+            Console.ForegroundColor = startColor;
+        }
+
+        static void DrawFooter()
+        {
+            string[] Commands = new string[] { "Run", "Save", "Load" };
+
+            ConsoleColor startColor = Console.ForegroundColor;
+            
+            Console.SetCursorPosition(0, Console.BufferHeight - 1);
+
+            int padding = 4;
+
+            foreach (var command in Commands)
+            {
+                Console.ForegroundColor = ConsoleColor.Black;
+                Console.BackgroundColor = ConsoleColor.Gray;
+                Console.Write($"{command}");
+                Console.ForegroundColor = ConsoleColor.Gray;
+                for (int i = 0; i < padding; i++)
+                {
+                    Console.Write('█');
+                }
+            }
+
+            Console.ForegroundColor = ConsoleColor.Gray;
+            int startX = Console.GetCursorPosition().Left;
+            for (int i = startX; i < Console.BufferWidth; i++)
+            {
+                Console.Write('█');
+            }
+
+            Console.BackgroundColor = ConsoleColor.Black;
+            Console.ForegroundColor = startColor;
         }
 
         static void REPL()
