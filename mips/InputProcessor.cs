@@ -13,6 +13,7 @@ namespace mips
         List<SoftOperationWrapper> AllOperations;
         Computer Owner;
         int addressPointer = 32;
+        int initialAddressPointer = 33;
         Dictionary<string, int> LabelPositions = new Dictionary<string, int>();
         List<int> ValidCommandLines = new List<int>();
         int WriteCommandLine = 0;
@@ -24,6 +25,7 @@ namespace mips
             this.AllOperations = AllOperations;
             this.Owner = Owner;
             addressPointer = startIndex;
+            initialAddressPointer = startIndex;
 
             InitializePseudoInstructions();
         }
@@ -32,11 +34,24 @@ namespace mips
         {
             _pseudoInstructions = new Dictionary<string, Func<Match, string[]>>();
             _pseudoInstructions.Add(@"Li\s+(\$\w+),\s*(\w+)", PI_li);
+            _pseudoInstructions.Add(@"La\s+(\$\w+),\s*(\w+)", PI_la);
+            _pseudoInstructions.Add(@"Move\s+(\$\w+),\s*(\$\w+)", PI_move);
         }
 
         string[] PI_li(Match RegexResults)
         {
             return new string[] { $"Ori {RegexResults.Groups[1].Value}, $zero, {RegexResults.Groups[2].Value}" };
+        }
+
+        string[] PI_la(Match RegexResults)
+        {
+            int addressLine = LabelPositions[RegexResults.Groups[2].Value];
+            return new string[] { $"Ori {RegexResults.Groups[1].Value}, $zero, {addressLine}" };
+        }
+
+        string[] PI_move(Match RegexResults)
+        {
+            return new string[] { $"Add {RegexResults.Groups[1].Value}, {RegexResults.Groups[2].Value}, $zero" };
         }
 
         public string GetLineWithoutComments(string Line)
@@ -111,6 +126,8 @@ namespace mips
                         break;
                     case "asciiz":
                         bool open = false;
+                        int count = 0;
+                        int[] fullString = new int[LineRemainder.Length - 2];
                         foreach (char c in LineRemainder)
                         {
                             if (c == '"')
@@ -123,14 +140,23 @@ namespace mips
                             }
 
                             if (open)
-                                Owner.StoreMemory((int)c, addressPointer++);
+                            {
+                                fullString[count] = (int)c;
+                                count++;
+                            }
                         }
-                        Owner.StoreMemory(0, addressPointer++);
+
+                        addressPointer += fullString.Length;
+                        fullString.ToList().ForEach((x) =>
+                        {
+                            Owner.StoreMemory(x);
+                        });
                         break;
                     case "word":
                         if (Int32.TryParse(LineRemainder.Trim(), out int result))
                         {
-                            Owner.StoreMemory(result, addressPointer++);
+                            addressPointer++;
+                            Owner.StoreMemory(result);
                         }
                         else
                         {
@@ -198,7 +224,8 @@ namespace mips
                 pointer += item.Length;
             }
 
-            Owner.StoreMemory(Result, ValidCommandLines[WriteCommandLine++]);
+            //Owner.StoreMemory(Result, ValidCommandLines[WriteCommandLine++]);
+            Owner.StoreMemory(Result);
             return Result;
         }
 

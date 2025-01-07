@@ -11,15 +11,14 @@ namespace Lexer
     public class Parser
     {
         List<Token> _tokens;
-        CompilationMeta _meta;
         int current = 0;
-        public Parser(List<Token> Tokens, CompilationMeta CompilationMeta)
+
+        public Parser(List<Token> Tokens)
         {
             _tokens = Tokens.Where((x) => x.TokenType != TokenTypes.Nothing).ToList();
-            _meta = CompilationMeta;
         }
 
-        public ASTExpression ConsumeToken(Stack<ASTExpression> Expressions, Node<ASTExpression> ASTRoot)
+        public ASTExpression ConsumeToken(Stack<ASTExpression> Expressions, Node<ASTExpression> ASTRoot, CompilationMeta scopeMeta)
         {
             if (IsOutOfRange()) return null;
 
@@ -36,17 +35,27 @@ namespace Lexer
                         Stack<ASTExpression> stack = new Stack<ASTExpression>();
                         Node<ASTExpression> subRoot = new Node<ASTExpression>(null);
                         //ASTExpression parsedExpression = ConsumeToken(stack, subRoot);
-                        
-                        Advance();  //TODO: PARSE ARGUMENTS?
+
+                        CompilationMeta functionScope = scopeMeta.AddSubScope();
+
+                        Stack<ASTExpression> argstack = new Stack<ASTExpression>();
+                        Node<ASTExpression> argsubRoot = new Node<ASTExpression>(null);
+
+                        var args = ParseArguments(Expressions, ASTRoot.Parent, scopeMeta);
                         Advance();
-                        
-                        
+
+                        for (int i = 0; i < args.Count; i++)
+                        {
+                            string? argument = args[i];
+                            functionScope.PushArgument(argument, i);
+                        }
+
                         if (Peek().Value != "{")
                             throw new Exception($"Unhandled exception for not seeing scriptblock on function {functionName}. Got {Peek().Value}");
 
-                        ASTExpression parsedBody = ConsumeToken(stack, subRoot);
+                        ASTExpression parsedBody = ConsumeToken(stack, subRoot, functionScope);
 
-                        ASTExpression function = new Function(functionName, (Expression)parsedBody);
+                        ASTExpression function = new Function(functionName, (Expression)parsedBody, args.Count);
                         Node<ASTExpression> functionNode = ASTRoot.AddChild(function);
 
                         //Expression LoopCondition = new Expression();
@@ -63,7 +72,7 @@ namespace Lexer
 
                         Expressions.Push(function);
 
-                        _meta.AddFunction(functionName);
+                        scopeMeta.AddFunction(functionName, args.Count);
 
                         return function;
                     }
@@ -77,7 +86,7 @@ namespace Lexer
                         if (Int32.TryParse(initialValue, out int literalVal))
                         {
                             Variable currentExpression = new Variable(Peek().Value, "NUMBER");
-                            _meta.PushInt(Peek(2).Value, literalVal);
+                            scopeMeta.PushInt(VarName, literalVal);
 
                             current++;
                             Expressions.Push(currentExpression);
@@ -87,7 +96,7 @@ namespace Lexer
                         else
                         {
                             Variable currentExpression = new Variable(Peek().Value, "STRING");
-                            _meta.PushString(Peek().Value, Peek().Value);
+                            scopeMeta.PushString(VarName, initialValue, false);
 
                             current++;
                             Expressions.Push(currentExpression);
@@ -101,12 +110,15 @@ namespace Lexer
                 {
                     Stack<ASTExpression> stack = new Stack<ASTExpression>();
                     Node<ASTExpression> subRoot = new Node<ASTExpression>(null);
-                    ASTExpression parsedExpression = ConsumeToken(stack, subRoot);
+
+                    CompilationMeta loopMeta = scopeMeta.AddSubScope();
+
+                    ASTExpression parsedExpression = ConsumeToken(stack, subRoot, loopMeta);
 
                     if (Peek().Value != "{")
                         throw new Exception("Unhandled exception for not seeing scriptblock on while loop");
 
-                    ASTExpression parsedBody = ConsumeToken(stack, subRoot);
+                    ASTExpression parsedBody = ConsumeToken(stack, subRoot, loopMeta);
 
                     ASTExpression loop = new WhileLoop((Expression)parsedExpression, (Expression)parsedBody);
                     Node<ASTExpression> loopNode = ASTRoot.AddChild(loop);
@@ -143,14 +155,14 @@ namespace Lexer
             {
                 if (Previous().Value == "(")
                 {
-                    Node<ASTExpression> parsedExpression = ParseToSymbol(typeof(ParanEnd));
+                    Node<ASTExpression> parsedExpression = ParseToSymbol(typeof(ParanEnd), scopeMeta);
                     ASTRoot.AddChild(parsedExpression);
                     return parsedExpression.Data;
                 }
 
                 if (Previous().Value == "{")
                 {
-                    Node<ASTExpression> parsedExpression = ParseToSymbol(typeof(CurlyEnd));
+                    Node<ASTExpression> parsedExpression = ParseToSymbol(typeof(CurlyEnd), scopeMeta);
                     ASTRoot.AddChild(parsedExpression);
                     return parsedExpression.Data;
                 }
@@ -170,9 +182,24 @@ namespace Lexer
 
             if (IsMatch(TokenTypes.Identifier))
             {
-                if (_meta.FunctionExists(Previous().Value))
+                if (scopeMeta.FunctionExists(Previous().Value))
                 {
-                    MachineCode jumpInstruction = new MachineCode($"Jal {Previous().Value}");
+                    string FunctionName = Previous().Value;
+                    int argCount = scopeMeta.FunctionArgumentCount(FunctionName);
+
+                    Advance();
+
+                    List<Operand> arguments = new List<Operand>();
+                    for (int i = 0; i < argCount; i++)
+                    {
+                        var result = ConsumeToken(Expressions, ASTRoot, scopeMeta);
+                        if (result is Operand operand)
+                        {
+                            arguments.Add(operand);
+                        }
+                    }
+
+                    FunctionCall jumpInstruction = new FunctionCall(FunctionName, arguments);
 
                     ASTRoot.AddChild(jumpInstruction);
                     Expressions.Push(jumpInstruction);
@@ -183,7 +210,7 @@ namespace Lexer
                 Token previous = Previous();
 
                 Variable currentExpression = new Variable(previous.Value,
-                    _meta.GetVariableType(previous.Value));
+                    scopeMeta.GetVariableType(previous.Value));
 
                 Expressions.Push(currentExpression);
                 
@@ -206,9 +233,13 @@ namespace Lexer
                 {
                     if (Expressions.Pop() is Variable LHS)
                     {
-                        if (ConsumeToken(Expressions, ASTRoot) is Expression RHS)
+                        if (ConsumeToken(Expressions, ASTRoot, scopeMeta) is Expression RHS)
                         {
-                            ASTExpression Assignment = new Assignment(LHS, RHS);
+                            string? Label = null;
+                            if (Previous(4).Value == "var")
+                                Label = Previous(3).Value;
+
+                            ASTExpression Assignment = new Assignment(LHS, RHS, Label);
 
                             ASTRoot.AddChild(Assignment);
                             Assignment.TreeRepresentation.AddChild(LHS);
@@ -222,23 +253,23 @@ namespace Lexer
                 }
 
                 //arithmetic
-                if (HandleOperator("+", Expressions, ASTRoot, OperatorTypes.ADD) is var addResult && addResult != null)
+                if (HandleOperator("+", Expressions, ASTRoot, OperatorTypes.ADD, scopeMeta) is var addResult && addResult != null)
                     return addResult;
 
-                if (HandleOperator("-", Expressions, ASTRoot, OperatorTypes.SUBTRACT) is var subResult && subResult != null)
+                if (HandleOperator("-", Expressions, ASTRoot, OperatorTypes.SUBTRACT, scopeMeta) is var subResult && subResult != null)
                     return subResult;
 
-                if (HandleOperator("*", Expressions, ASTRoot, OperatorTypes.MULTIPLY) is var multResult && multResult != null)
+                if (HandleOperator("*", Expressions, ASTRoot, OperatorTypes.MULTIPLY, scopeMeta) is var multResult && multResult != null)
                     return multResult;
 
-                if (HandleOperator("/", Expressions, ASTRoot, OperatorTypes.DIVIDE) is var divResult && divResult != null)
+                if (HandleOperator("/", Expressions, ASTRoot, OperatorTypes.DIVIDE, scopeMeta) is var divResult && divResult != null)
                     return divResult;
 
-                if (HandleOperator("+=", Expressions, ASTRoot, OperatorTypes.ADDASSIGN) is var addaResult && addaResult != null)
+                if (HandleOperator("+=", Expressions, ASTRoot, OperatorTypes.ADDASSIGN, scopeMeta) is var addaResult && addaResult != null)
                     return addaResult;
 
                 //comparison
-                if (HandleOperator("<", Expressions, ASTRoot, OperatorTypes.LESSTHAN) is var lessResult && lessResult != null)
+                if (HandleOperator("<", Expressions, ASTRoot, OperatorTypes.LESSTHAN, scopeMeta) is var lessResult && lessResult != null)
                     return lessResult;
             }
 
@@ -272,13 +303,26 @@ namespace Lexer
             return null;
         }
 
-        ASTExpression HandleOperator(string OperatorSymbol, Stack<ASTExpression> Expressions, Node<ASTExpression> ASTRoot, OperatorTypes OperatorType)
+        List<string> ParseArguments(Stack<ASTExpression> Expressions, Node<ASTExpression> ASTRoot, CompilationMeta scopeMeta)
+        {
+            Advance();
+            List<string> Arguments = new List<string>();
+            while (Peek().Value != ")")
+            {
+                Arguments.Add(Peek().Value.Replace(",", "").Trim());
+                Advance();
+            }
+
+            return Arguments;
+        }
+
+        ASTExpression HandleOperator(string OperatorSymbol, Stack<ASTExpression> Expressions, Node<ASTExpression> ASTRoot, OperatorTypes OperatorType, CompilationMeta scopeMeta)
         {
             if (Previous().Value == OperatorSymbol)
             {
                 if (Expressions.Pop() is Expression LHS)
                 {
-                    if (ConsumeToken(Expressions, ASTRoot) is Expression RHS)
+                    if (ConsumeToken(Expressions, ASTRoot, scopeMeta) is Expression RHS)
                     {
                         BinaryOperation Operation = new BinaryOperation(LHS, 
                             new Operator(OperatorType), RHS);
@@ -297,7 +341,7 @@ namespace Lexer
             return null;
         }
 
-        public Node<ASTExpression> Parse()
+        public Node<ASTExpression> Parse(CompilationMeta ScopeMeta)
         {
             Stack<ASTExpression> Expressions = new Stack<ASTExpression>();
             Node<ASTExpression> ASTRoot = new Node<ASTExpression>(new Expression());
@@ -305,7 +349,7 @@ namespace Lexer
             while (current < _tokens.Count)
             {
                 if (IsOutOfRange()) break;
-                ConsumeToken(Expressions, ASTRoot);
+                ConsumeToken(Expressions, ASTRoot, ScopeMeta);
             }
 
             ASTRoot.PrintPretty("", true);
@@ -313,7 +357,7 @@ namespace Lexer
             return ASTRoot;
         }
 
-        public Node<ASTExpression> ParseToSymbol(Type SymbolType)
+        public Node<ASTExpression> ParseToSymbol(Type SymbolType, CompilationMeta ScopeMeta)
         {
             Stack<ASTExpression> Expressions = new Stack<ASTExpression>();
             Node<ASTExpression> ASTRoot = new Node<ASTExpression>(new Expression());
@@ -321,7 +365,7 @@ namespace Lexer
             while (current < _tokens.Count)
             {
                 if (IsOutOfRange()) break;
-                var currentToken = ConsumeToken(Expressions, ASTRoot);
+                var currentToken = ConsumeToken(Expressions, ASTRoot, ScopeMeta);
                 if (currentToken == null) continue;
                 if (currentToken.GetType() == SymbolType) 
                     break;

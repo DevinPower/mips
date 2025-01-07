@@ -129,11 +129,20 @@ namespace Lexer.AST
         public string Name { get; private set; }
         public string Type { get; private set; }
         public override bool SkipGeneration { get { return true; } }
+        int ArgumentPosition = -1;
 
-        public Variable(string Name, string Type)
+        public Variable(string Name, string Type, int ArgumentPosition = -1)
         {
             this.Name = Name;
             this.Type = Type;
+            this.ArgumentPosition = ArgumentPosition;
+        }
+
+        public int? GetArgumentPosition()
+        {
+            if (ArgumentPosition >= 0)
+                return ArgumentPosition;
+            return null;
         }
 
         public override string ToString()
@@ -150,15 +159,70 @@ namespace Lexer.AST
     internal class ParanEnd : ASTExpression { }
     internal class CurlyEnd : ASTExpression { }
 
+    internal class FunctionCall : ASTExpression
+    {
+        public List<Operand> Arguments { get; private set; }
+        public string LabelName { get; private set; }
+
+        public FunctionCall(string LabelName, List<Operand> Arguments)
+        {
+            this.LabelName = LabelName;
+            this.Arguments = Arguments;
+        }
+
+        public override bool SkipChildGeneration
+        {
+            get { return true; }
+        }
+
+        public override string ToString()
+        {
+            return $"{LabelName}({Arguments.Count})";
+        }
+
+        public override IntermediaryCodeMeta GenerateCode(CompilationMeta MetaData)
+        {
+            List<string> AllCode = new List<string>();
+
+            AllCode.Add(";start function call-----");
+
+            for (int i = 0; i < Arguments.Count; i++)
+            {
+                Operand operand = Arguments[i];
+                if (operand is Literal literal)
+                {
+                    AllCode.Add($"Li $a{i++}, {literal.GetValue()}");
+                    continue;
+                }
+
+                if (operand is Variable variable)
+                {
+                    int VariableTempRegister = MetaData.GetTemporaryRegister(MetaData.LookupVariable(variable.Name));
+                    AllCode.Add($"Li $t{VariableTempRegister}, {MetaData.GetReferenceLabelByPointer(variable.Name)}");
+                    AllCode.Add($"Move $a{i++}, $t{VariableTempRegister}");
+                    continue;
+                }
+            }
+
+            AllCode.Add($"Jal {LabelName}");
+
+            AllCode.Add(";end function call-------");
+
+            return new IntermediaryCodeMeta(AllCode.ToArray(), false);
+        }
+    }
+
     internal class Assignment : ASTExpression
     {
         public Variable LHS { get; private set; }
         public Expression RHS { get; private set; }
+        public string? VariableLabel { get; private set; }
 
-        public Assignment(Variable LHS, Expression RHS)
+        public Assignment(Variable LHS, Expression RHS, string? VariableLabel)
         {
             this.LHS = LHS;
             this.RHS = RHS;
+            this.VariableLabel = VariableLabel;
         }
 
         public override string ToString()
@@ -194,19 +258,25 @@ namespace Lexer.AST
             else
             {
                 int tempRegister = MetaData.GetTemporaryRegister(MetaData.LookupVariable(LeftVar.Name));
+                string referenceLabel = MetaData.GetReferenceLabelByPointer(LeftVar.Name);
+                int pointerRegister = MetaData.GetTemporaryRegister(LeftVar.Name.GetHashCode());
 
                 if (RHS is Variable)
                 {
                     int RHtempRegister = MetaData.GetTemporaryRegister(MetaData.LookupVariable((RHS as Variable).Name));
 
                     return new IntermediaryCodeMeta(
-                        new string[1] { $"Li $t{tempRegister}, $t{RHtempRegister}" },
+                        new string[2] { $"La $t{RHtempRegister}, {(RHS as Variable).Name}",
+                            $"SB $t{RHtempRegister}, {referenceLabel}(0)"},
                         false);
                 }
+                
+                if (VariableLabel == null)
+                    VariableLabel = MetaData.PushStaticString((RHS as Literal).GetValue().ToString());
 
-                string variableLabel = MetaData.PushStaticString((RHS as Literal).GetValue().ToString());
                 return new IntermediaryCodeMeta(
-                    new string[1] { $"Li $t{tempRegister}, {variableLabel}" },
+                    new string[2] { $"La $t{tempRegister}, {VariableLabel}",
+                        $"SB $t{tempRegister}, {referenceLabel}(0)" },
                     false);
             }
 
@@ -263,18 +333,20 @@ namespace Lexer.AST
     {
         public override bool SkipChildGeneration { get { return true; } }
         public string FunctionName { get; private set; }
+        public int ArgumentCount = 0;
 
         Expression Body;
 
-        public Function(string FunctionName, Expression Body)
+        public Function(string FunctionName, Expression Body, int ArgumentCount)
         {
             this.FunctionName = FunctionName;
             this.Body = Body;
+            this.ArgumentCount = ArgumentCount;
         }
 
         public override string ToString()
         {
-            return $"func ({FunctionName})->" + Body.ToString();
+            return $"func ({FunctionName})[{ArgumentCount}]->" + Body.ToString();
         }
 
         public override IntermediaryCodeMeta GenerateCode(CompilationMeta MetaData)
@@ -286,6 +358,7 @@ namespace Lexer.AST
 
             BodyCode.Add($"J {FuncEnd}");
             GeneratedCode[0] = $"{FunctionName}: " + GeneratedCode[0];
+
             BodyCode.AddRange(GeneratedCode);
             BodyCode.Add("Jr $ra");
             BodyCode.Add($"{FuncEnd}: ");

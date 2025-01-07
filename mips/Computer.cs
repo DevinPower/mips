@@ -17,7 +17,6 @@ public class Computer
     
     public static string[] InstructionRegisterDefinitions = new[] {
         "$zero",
-        "$a0",
         "$v0", "$v1",
         "$a0", "$a1", "$a2", "$a3",
         "$t0", "$t1", "$t2", "$t3", "$t4", "$t5", "$t6", "$t7",
@@ -37,14 +36,12 @@ public class Computer
     public Computer(int MemorySize, int HeapSize)
     {
         Memory = new int[MemorySize];
-        _programCounter = HeapSize;
         _heapPointer = HeapSize + 33;
+        _programCounter = _heapPointer + 3;
 
-        InitializeRegisters(33);
+        InitializeRegisters(_heapPointer + 3);
         LoadInstructionProcessors();
         InitializePeripherals();
-
-        StoreHeap(new[] { 69,69,69, 69, 69, 69 });
 
         _Syscall = new[]
         {
@@ -118,12 +115,17 @@ public class Computer
 
     public void StoreHeap(int[] Value)
     {
-        for (int i = Value.Length - 1; i > 0; i--)
+        for (int i = Value.Length - 1; i >= 0; i--)
         {
             Memory[_heapPointer - i] = Value[i];
         }
 
         _heapPointer -= Value.Length;
+    }
+
+    public void StoreHeap(int Value)
+    {
+        Memory[_heapPointer--] = Value;
     }
 
     public int ReserveMemory(int Size)
@@ -139,9 +141,11 @@ public class Computer
         Memory[Position] = Value;
     }
 
-    public int GetMemoryPointer()
+    public void StoreMemory(int Value)
     {
-        return _heapPointer;
+        int memoryPointer = Memory[GetRegisterAddress("$sp")];
+        Memory[memoryPointer] = Value;
+        Memory[GetRegisterAddress("$sp")]++;
     }
 
     public bool StepProgram()
@@ -248,18 +252,18 @@ public class Computer
         var ops = GetAllInstructions();
 
         List<int> result = new List<int>();
-        InputProcessor ip = new InputProcessor(this, ops, _heapPointer);
+        InputProcessor ip = new InputProcessor(this, ops, _programCounter);
+
+        foreach (string Line in Program)
+        {
+            ip.FindLabels(ip.GetLineWithoutComments(Line));
+        }
 
         List<string> expandedProgram = new List<string>();
 
-        foreach(string Line in Program)
+        foreach (string Line in Program)
         {
             expandedProgram.AddRange(ip.CheckPseudoInstructions(Line));
-        }
-
-        foreach (string Line in expandedProgram)
-        {
-            ip.FindLabels(ip.GetLineWithoutComments(Line));
         }
 
         foreach (var peripheral in Peripherals)

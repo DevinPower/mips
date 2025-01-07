@@ -12,7 +12,7 @@ namespace TideScriptREPL
     {
         static int count = 0;
         const int TABSIZE = 5;
-        static readonly char[] AlwaysAlpha = new [] { '=', '+', '-', '$', '|', '>', '<' };
+        static readonly char[] AlwaysAlpha = new [] { '=', '+', '-', '$', '|', '>', '<', ',' };
 
         static void Main(string[] args)
         {
@@ -63,7 +63,8 @@ namespace TideScriptREPL
                             Computer c = new Computer(128, 32);
                             c.Compile(ic);
 
-                            c.ProcessFull();
+                            if (Key.Modifiers != ConsoleModifiers.Control)
+                                c.ProcessFull();
 
                             c.DumpMemory();
 
@@ -385,16 +386,16 @@ namespace TideScriptREPL
 
         static string[] Compile(List<Token> tokens)
         {
-            CompilationMeta meta = new CompilationMeta();
+            CompilationMeta rootMeta = new CompilationMeta();
 
-            Parser parser = new Parser(tokens, meta);
-            var result = parser.Parse();
+            Parser parser = new Parser(tokens);
+            var result = parser.Parse(rootMeta);
 
-            string[] intermediaryCode = ICWalker.GenerateCodeRecursive(result, meta);
+            string[] intermediaryCode = ICWalker.GenerateCodeRecursive(result, rootMeta);
             List<string> TotalProgram = new List<string>();
 
             Console.ForegroundColor = ConsoleColor.Green;
-            foreach(string data in meta.GetDataSection())
+            foreach(string data in rootMeta.GetProgram())
             {
                 Console.WriteLine(data);
                 TotalProgram.Add(data);
