@@ -46,7 +46,7 @@ namespace Lexer
 
         }
 
-        public List<Token> Lexicate(string Contents, bool ForDraw)
+        public List<Token> Lexicate(string Contents, bool ForDraw, bool PrintAnalysisDebug)
         {
             string CurrentToken = "";
 
@@ -162,7 +162,8 @@ namespace Lexer
                 CurrentToken = "";
             }
 
-            //PrintAnalysis(LexedCode.Select((x) => { return (x.Item1, x.Item2);  }).ToList());
+            if (PrintAnalysisDebug)
+                PrintAnalysis(LexedCode.Select((x) => { return (x.Item1, x.Item2);  }).ToList());
 
             return LexedCode.Select((x) => new Token(x.Item2, x.Item1, x.Item3, x.Item4)).ToList();
         }

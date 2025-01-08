@@ -58,7 +58,15 @@ namespace TideScriptREPL
 
                             Console.Clear();
 
-                            var ic = Compile(GetTokens(l2, Contents, false));
+                            bool PrintAST = Key.Modifiers == ConsoleModifiers.Shift;
+
+                            var ic = Compile(GetTokens(l2, Contents, false, PrintAST));
+
+                            if (PrintAST)
+                            {
+                                Console.WriteLine("Press any key to continue");
+                                Console.ReadKey();
+                            }
 
                             Computer c = new Computer(128, 32);
                             c.Compile(ic);
@@ -195,7 +203,7 @@ namespace TideScriptREPL
             }
         }
 
-        static List<Token> GetTokens(Lexer.Lexer Lexer, List<List<char>> Contents, bool ForDraw)
+        static List<Token> GetTokens(Lexer.Lexer Lexer, List<List<char>> Contents, bool ForDraw, bool PrintAnalysis = false)
         {
             StringBuilder sb = new StringBuilder();
             foreach (List<char> Line in Contents)
@@ -207,7 +215,7 @@ namespace TideScriptREPL
                 sb.Append('\n');
             }
 
-            return Lexer.Lexicate(sb.ToString(), ForDraw);
+            return Lexer.Lexicate(sb.ToString(), ForDraw, PrintAnalysis);
         }
 
         static void DrawContents(Lexer.Lexer Lexer, List<List<char>> Contents)

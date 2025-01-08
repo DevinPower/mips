@@ -19,7 +19,7 @@
 
 
             Lexer l = new Lexer();
-            var tokens = l.Lexicate(Code, false);
+            var tokens = l.Lexicate(Code, false, false);
 
             Console.WriteLine("----");
 

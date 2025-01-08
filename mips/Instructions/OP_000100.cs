@@ -25,14 +25,14 @@
 
         static void Beq((Computer Computer, int rs, int rt, int offset) passedArgs)
         {
-            //if rs==rt pc+=offset
-            passedArgs.Computer.Jump(passedArgs.Computer.GetProgramCounter() + passedArgs.offset);
+            if (passedArgs.Computer.Memory[passedArgs.rs] == passedArgs.Computer.Memory[passedArgs.rt])
+                passedArgs.Computer.Jump(passedArgs.Computer.GetProgramCounter() + passedArgs.offset);
         }
 
         public void Execute(Computer Computer, int Instruction)
         {
             int[] InstructionSplits = HelperFunctions.BitsToInt(Instruction, new int[] { 6, 5, 5, 16 });
-            Operations[0].FunctionCall.Invoke((Computer, InstructionSplits[0], InstructionSplits[1], InstructionSplits[2]));
+            Operations[0].FunctionCall.Invoke((Computer, InstructionSplits[1], InstructionSplits[2], InstructionSplits[0]));
         }
     }
 }

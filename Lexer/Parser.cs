@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO.Pipes;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -113,21 +114,21 @@ namespace Lexer
 
                     CompilationMeta conditionalMeta = scopeMeta.AddSubScope();
 
-                    ASTExpression parsedExpression = ConsumeToken(stack, subRoot, conditionalMeta);
+                    ASTExpression parsedExpression = ConsumeToken(stack, subRoot, scopeMeta);
 
                     if (Peek().Value != "{")
                         throw new Exception("Unhandled exception for not seeing scriptblock on if statement");
 
-                    ASTExpression parsedBody = ConsumeToken(stack, subRoot, conditionalMeta);
+                    ASTExpression parsedBody = ConsumeToken(stack, subRoot, scopeMeta);
 
                     ASTExpression conditional = new Conditional((Expression)parsedExpression, (Expression)parsedBody);
 
-                    Node<ASTExpression> loopNode = ASTRoot.AddChild(conditional);
+                    Node<ASTExpression> conditionalNode = ASTRoot.AddChild(conditional);
 
                     Expression ConditionalContents = new Expression();
                     Expression ConditionalCondition = new Expression();
-                    var ConditionalConditionAST = loopNode.AddChild(ConditionalCondition);
-                    var ConditionalContentsAST = loopNode.AddChild(ConditionalContents);
+                    var ConditionalConditionAST = conditionalNode.AddChild(ConditionalCondition);
+                    var ConditionalContentsAST = conditionalNode.AddChild(ConditionalContents);
 
                     subRoot.Children[0].Children.ForEach(child => {
                         ConditionalConditionAST.AddChild(child);
@@ -156,12 +157,12 @@ namespace Lexer
 
                     CompilationMeta loopMeta = scopeMeta.AddSubScope();
 
-                    ASTExpression parsedExpression = ConsumeToken(stack, subRoot, loopMeta);
+                    ASTExpression parsedExpression = ConsumeToken(stack, subRoot, scopeMeta);
 
                     if (Peek().Value != "{")
                         throw new Exception("Unhandled exception for not seeing scriptblock on while loop");
 
-                    ASTExpression parsedBody = ConsumeToken(stack, subRoot, loopMeta);
+                    ASTExpression parsedBody = ConsumeToken(stack, subRoot, scopeMeta);
 
                     ASTExpression loop = new WhileLoop((Expression)parsedExpression, (Expression)parsedBody);
                     Node<ASTExpression> loopNode = ASTRoot.AddChild(loop);
