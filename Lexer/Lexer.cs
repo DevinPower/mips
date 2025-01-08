@@ -38,7 +38,7 @@ namespace Lexer
         };
 
         readonly string[] Separators = new[] {
-            ";", "(", ")", "{", "}", "[", "]", "\n"
+            ";", "(", ")", "{", "}", "[", "]", "\n", ","
         };
 
         public Lexer()
@@ -162,12 +162,12 @@ namespace Lexer
                 CurrentToken = "";
             }
 
-            //PrintAnalysis(LexedCode);
+            //PrintAnalysis(LexedCode.Select((x) => { return (x.Item1, x.Item2);  }).ToList());
 
             return LexedCode.Select((x) => new Token(x.Item2, x.Item1, x.Item3, x.Item4)).ToList();
         }
 
-        void PrintAnalysis(List<(string, TokenTypes)> Tokens)
+        public void PrintAnalysis(List<(string, TokenTypes)> Tokens)
         {
             foreach(var Token in Tokens)
             {

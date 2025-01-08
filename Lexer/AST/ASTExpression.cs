@@ -191,15 +191,23 @@ namespace Lexer.AST
                 Operand operand = Arguments[i];
                 if (operand is Literal literal)
                 {
-                    AllCode.Add($"Li $a{i++}, {literal.GetValue()}");
+                    if (Int32.TryParse(literal.GetValue().ToString(), out int literalInt))
+                    {
+                        AllCode.Add($"Li $a{i}, {literalInt}");
+                        continue;
+                    }
+                    
+                    string VariableLabel = MetaData.PushStaticString(literal.GetValue().ToString());
+                    AllCode.Add($"Li $a{i}, {VariableLabel}");
                     continue;
                 }
 
                 if (operand is Variable variable)
                 {
                     int VariableTempRegister = MetaData.GetTemporaryRegister(MetaData.LookupVariable(variable.Name));
-                    AllCode.Add($"Li $t{VariableTempRegister}, {MetaData.GetReferenceLabelByPointer(variable.Name)}");
-                    AllCode.Add($"Move $a{i++}, $t{VariableTempRegister}");
+                    //AllCode.Add($"Li $t{VariableTempRegister}, {MetaData.GetReferenceLabelByPointer(variable.Name)}");
+                    AllCode.Add($"LB $t{VariableTempRegister}, {MetaData.GetReferenceLabelByPointer(variable.Name)}(0)");
+                    AllCode.Add($"Move $a{i}, $t{VariableTempRegister}");
                     continue;
                 }
             }
@@ -284,6 +292,48 @@ namespace Lexer.AST
         }
     }
 
+    internal class Conditional : ASTExpression
+    {
+        public override bool SkipChildGeneration { get { return true; } }
+
+        Expression Condition;
+        Expression Body;
+
+        public Conditional(Expression Condition, Expression Body)
+        {
+            this.Condition = Condition;
+            this.Body = Body;
+        }
+
+        public override string ToString()
+        {
+            return "Conditional->" + Condition.ToString() + "," + Body.ToString();
+        }
+
+        public override IntermediaryCodeMeta GenerateCode(CompilationMeta MetaData)
+        {
+            string[] ConditionCode = ICWalker.GenerateCodeRecursive(Condition.TreeRepresentation, MetaData, true);
+            string[] BodyCode = ICWalker.GenerateCodeRecursive(Body.TreeRepresentation, MetaData, true);
+
+            string endGuid = Guid.NewGuid().ToString().Replace("-", "");
+            string startGuid = Guid.NewGuid().ToString().Replace("-", "");
+
+            string JumpRegister = ICWalker.GetFirstRegister(ConditionCode[2]);
+
+
+            ConditionCode[0] = $"{startGuid}: {ConditionCode[0]}";
+
+            List<string> AllCode = new List<string>();
+            AllCode.AddRange(ConditionCode);
+            AllCode.Add($"Beq {JumpRegister}, 1, {endGuid}");
+            AllCode.AddRange(BodyCode);
+            AllCode.Add($"{endGuid}:");
+
+
+            return new IntermediaryCodeMeta(AllCode.ToArray(), false);
+        }
+    }
+
     internal class WhileLoop : ASTExpression
     {
         public override bool SkipChildGeneration { get { return true; } }
@@ -316,13 +366,11 @@ namespace Lexer.AST
             ConditionCode[0] = $"{startGuid}: {ConditionCode[0]}";
 
             List<string> AllCode = new List<string>();
-            AllCode.Add(";BEGIN LOOP-------------------------------");
             AllCode.AddRange(ConditionCode);
             AllCode.Add($"Beq {JumpRegister}, 1, {endGuid}");
             AllCode.AddRange(BodyCode);
             AllCode.Add($"J {startGuid}");
             AllCode.Add($"{endGuid}:");
-            AllCode.Add(";END LOOP---------------------------------");
 
 
             return new IntermediaryCodeMeta(AllCode.ToArray(), false);

@@ -74,7 +74,6 @@ namespace TideScriptREPL
                         }
                         catch (Exception ex)
                         {
-                            Console.Clear();
                             Console.WriteLine(ex.Message.ToString());
                             Console.WriteLine("");
                             Console.WriteLine(ex.StackTrace);

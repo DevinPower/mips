@@ -8,6 +8,7 @@ LB $a0, PROMPT(0)
 Syscall
 Ori $v0, $zero, 8
 LB $a0, TEXT(0)
+Ori $v0, $zero, 8
 Ori $a1, $zero, 28
 Syscall
 Ori $v0, $zero, 4

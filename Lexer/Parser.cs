@@ -106,6 +106,49 @@ namespace Lexer
                     }
                 }
 
+                if (Previous().Value == "if")
+                {
+                    Stack<ASTExpression> stack = new Stack<ASTExpression>();
+                    Node<ASTExpression> subRoot = new Node<ASTExpression>(null);
+
+                    CompilationMeta conditionalMeta = scopeMeta.AddSubScope();
+
+                    ASTExpression parsedExpression = ConsumeToken(stack, subRoot, conditionalMeta);
+
+                    if (Peek().Value != "{")
+                        throw new Exception("Unhandled exception for not seeing scriptblock on if statement");
+
+                    ASTExpression parsedBody = ConsumeToken(stack, subRoot, conditionalMeta);
+
+                    ASTExpression conditional = new Conditional((Expression)parsedExpression, (Expression)parsedBody);
+
+                    Node<ASTExpression> loopNode = ASTRoot.AddChild(conditional);
+
+                    Expression ConditionalContents = new Expression();
+                    Expression ConditionalCondition = new Expression();
+                    var ConditionalConditionAST = loopNode.AddChild(ConditionalCondition);
+                    var ConditionalContentsAST = loopNode.AddChild(ConditionalContents);
+
+                    subRoot.Children[0].Children.ForEach(child => {
+                        ConditionalConditionAST.AddChild(child);
+                        child.Data.SetTreeRepresentation(child);
+                    });
+                    subRoot.Children[1].Children.ForEach(child => {
+                        ConditionalContentsAST.AddChild(child);
+                        child.Data.SetTreeRepresentation(child);
+                    });
+
+                    ConditionalConditionAST.Data.SetTreeRepresentation(ConditionalConditionAST);
+                    ConditionalContentsAST.Data.SetTreeRepresentation(ConditionalContentsAST);
+
+                    subRoot.Children[0].Data.SetTreeRepresentation(subRoot.Children[0]);
+                    subRoot.Children[1].Data.SetTreeRepresentation(subRoot.Children[1]);
+
+                    Expressions.Push(conditional);
+
+                    return conditional;
+                }
+
                 if (Previous().Value == "while")
                 {
                     Stack<ASTExpression> stack = new Stack<ASTExpression>();
