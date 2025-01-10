@@ -199,14 +199,16 @@ namespace Lexer
             {
                 if (Previous().Value == "(")
                 {
-                    Node<ASTExpression> parsedExpression = ParseToSymbol(typeof(ParanEnd), scopeMeta);
+                    Stack<ASTExpression> stack = new Stack<ASTExpression>();
+                    Node<ASTExpression> parsedExpression = ParseToSymbol(typeof(ParanEnd), scopeMeta, out stack);
                     ASTRoot.AddChild(parsedExpression);
                     return parsedExpression.Data;
                 }
 
                 if (Previous().Value == "{")
                 {
-                    Node<ASTExpression> parsedExpression = ParseToSymbol(typeof(CurlyEnd), scopeMeta);
+                    Stack<ASTExpression> stack = new Stack<ASTExpression>();
+                    Node<ASTExpression> parsedExpression = ParseToSymbol(typeof(CurlyEnd), scopeMeta, out stack);
                     ASTRoot.AddChild(parsedExpression);
                     return parsedExpression.Data;
                 }
@@ -286,23 +288,20 @@ namespace Lexer
                         if (Previous(3).Value == "var")
                             Label = Previous(1).Value;
 
-                        Node<ASTExpression> RightParse = ParseToSymbol(typeof(Semicolon), scopeMeta);
-                        if (RightParse.Data is Expression RHS)
+                        Stack<ASTExpression> stack = new Stack<ASTExpression>();
+
+                        Node<ASTExpression> assignmentExpression = ParseToSymbol(typeof(Semicolon), scopeMeta, out stack);
+
+                        if (stack.Pop() is Expression expression)
                         {
-                            ASTExpression Assignment = new Assignment(LHS, RHS, Label);
+                            Assignment assignment = new Assignment(LHS, expression, Label);
+                            var newNode = ASTRoot.AddChild(assignment);
+                            Expressions.Push(assignment);
+                            newNode.AddChild(LHS);
 
-                            ASTRoot.AddChild(Assignment);
-                            Assignment.TreeRepresentation.AddChild(LHS);
-                            Assignment.TreeRepresentation.AddChild(RHS);
+                            newNode.AddChild(expression.TreeRepresentation);
 
-                            foreach(var rhchild in RightParse.Children)
-                            {
-                                RHS.TreeRepresentation.AddChild(rhchild.Data);
-                            }
-
-                            Expressions.Push(Assignment);
-
-                            return Assignment;
+                            return assignment;
                         }
                     }
                 }
@@ -417,12 +416,13 @@ namespace Lexer
         {
             Stack<ASTExpression> Expressions = new Stack<ASTExpression>();
             Node<ASTExpression> ASTRoot = new Node<ASTExpression>(new Expression());
+            Stack<ASTExpression> stack = new Stack<ASTExpression>();
 
             while (current < _tokens.Count)
             {
                 if (IsOutOfRange()) break;
                 //ConsumeToken(Expressions, ASTRoot, ScopeMeta);
-                Node<ASTExpression> Expression = ParseToSymbol(typeof(Semicolon), ScopeMeta);
+                Node<ASTExpression> Expression = ParseToSymbol(typeof(Semicolon), ScopeMeta, out stack);
 
                 Expressions.Push(Expression.Data); 
                 ASTRoot.AddChild(Expression);
@@ -433,19 +433,20 @@ namespace Lexer
             return ASTRoot;
         }
 
-        public Node<ASTExpression> ParseToSymbol(Type SymbolType, CompilationMeta ScopeMeta)
+        public Node<ASTExpression> ParseToSymbol(Type SymbolType, CompilationMeta ScopeMeta, out Stack<ASTExpression> Expressions)
         {
-            Stack<ASTExpression> Expressions = new Stack<ASTExpression>();
+            Stack<ASTExpression> _expressions = new Stack<ASTExpression>();
             Node<ASTExpression> ASTRoot = new Node<ASTExpression>(new Expression());
 
             while (current < _tokens.Count)
             {
                 if (IsOutOfRange()) break;
-                var currentToken = ConsumeToken(Expressions, ASTRoot, ScopeMeta);
+                var currentToken = ConsumeToken(_expressions, ASTRoot, ScopeMeta);
                 if (currentToken == null) continue;
-                if (currentToken.GetType() == SymbolType) 
-                    break;
+                if (currentToken.GetType() == SymbolType) break;
             }
+
+            Expressions = _expressions;
 
             return ASTRoot;
         }

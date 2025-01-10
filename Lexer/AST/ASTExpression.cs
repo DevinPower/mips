@@ -132,6 +132,11 @@ namespace Lexer.AST
 
             return false;
         }
+
+        public override IntermediaryCodeMeta GenerateCode(CompilationMeta MetaData)
+        {
+            return new IntermediaryCodeMeta(new string[] { ";opeartor generated" }, true);
+        }
     }
 
     internal class Variable : Operand
@@ -455,8 +460,18 @@ namespace Lexer.AST
             }
             else
             {
-                leftRegister = MetaData.GetTemporaryRegister(-2);
-                LHSLoad = $"Ori $t{leftRegister}, $zero, {(LHS as Literal).GetValue()}";
+                if (LHS is Literal)
+                {
+                    leftRegister = MetaData.GetTemporaryRegister(-2);
+                    LHSLoad = $"Ori $t{leftRegister}, $zero, {(LHS as Literal).GetValue()}";
+                }
+                else
+                {
+                    if (LHS is Expression)
+                    {
+                        LHSLoad = string.Join("\n", LHS.GenerateCode(MetaData).Code);
+                    }
+                }
             }
 
             string RHSLoad = "";
