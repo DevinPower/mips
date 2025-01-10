@@ -210,7 +210,7 @@
             int[] InstructionSplits = HelperFunctions.BitsToInt(Instruction, new int[] { 6, 5, 5, 5, 5, 6 });
             OperationWrapper<(Computer Computer, int rs, int rt, int rd, int sa)> operation = Operations.First((x) => x.Funct == InstructionSplits[0]);
             operation.FunctionCall
-               .Invoke((Computer, InstructionSplits[2], InstructionSplits[3], InstructionSplits[4], InstructionSplits[1]));
+               .Invoke((Computer, InstructionSplits[3], InstructionSplits[2], InstructionSplits[4], InstructionSplits[1]));
         }
     }
 }

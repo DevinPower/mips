@@ -33,7 +33,16 @@ namespace Lexer.AST
     {
         public override string ToString()
         {
-            return $"E:{GetHashCode().ToString()}";
+            return $"E:{GetHashCode().ToString()} cc= {TreeRepresentation?.Children?.Count}";
+        }
+
+        public override IntermediaryCodeMeta GenerateCode(CompilationMeta MetaData)
+        {
+            if (TreeRepresentation?.Children == null)
+                return base.GenerateCode(MetaData);
+
+            List<IntermediaryCodeMeta> icm = TreeRepresentation.Children.Select((x) => x.Data.GenerateCode(MetaData)).ToList();
+            return new IntermediaryCodeMeta(icm.SelectMany((x) => x.Code).ToArray(), false);
         }
     }
 
@@ -109,8 +118,9 @@ namespace Lexer.AST
         {
             return new string[] { $"Add {Result}, {Op1}, {Op2}", $"Sub {Result}, {Op1}, {Op2}", 
                 $"Mul {Result}, {Op1}, {Op2}", $"Div {Result}, {Op1}, {Op2}",
-                $"Slt {Result}, {Op1}, {Op2}", $"Bgt {Result}, {Op1}, {Op2}", $"Beq {Result}, {Op1}, {Op2}",
-                $"Add {Op1}, {Op1}, {Op2}", "-=", "*=", "/="}[(int)Type];
+                $"Slt {Result}, {Op1}, {Op2}", $"Bgt {Result}, {Op1}, {Op2}", 
+                $"Beq {Result}, {Op1}, {Op2}", $"Add {Op1}, {Op1}, {Op2}", 
+                "-=", "*=", "/="}[(int)Type];
         }
 
         public bool AssignToSelf()
@@ -158,6 +168,8 @@ namespace Lexer.AST
 
     internal class ParanEnd : ASTExpression { }
     internal class CurlyEnd : ASTExpression { }
+
+    internal class Semicolon : ASTExpression { }
 
     internal class FunctionCall : ASTExpression
     {
@@ -316,19 +328,17 @@ namespace Lexer.AST
             string[] BodyCode = ICWalker.GenerateCodeRecursive(Body.TreeRepresentation, MetaData, true);
 
             string startGuid = Guid.NewGuid().ToString().Replace("-", "");
+            string endGuid = Guid.NewGuid().ToString().Replace("-", "");
 
             string JumpRegister = ICWalker.GetFirstRegister(ConditionCode[2]);
 
-            int oneRegister = MetaData.GetTemporaryRegister(-111111);
             ConditionCode[0] = $"{startGuid}: {ConditionCode[0]}";
-
-            int validInstructions = BodyCode.Where((x) => x[0] != ';').Count();
 
             List<string> AllCode = new List<string>();
             AllCode.AddRange(ConditionCode);
-            AllCode.Add($"Li $t{oneRegister}, 1");
-            AllCode.Add($"Beq {JumpRegister}, $t{oneRegister}, {validInstructions}");
+            AllCode.Add($"Beq {JumpRegister}, $zero, {endGuid}");
             AllCode.AddRange(BodyCode);
+            AllCode.Add($"{endGuid}:");
 
             return new IntermediaryCodeMeta(AllCode.ToArray(), false);
         }
@@ -358,20 +368,18 @@ namespace Lexer.AST
             string[] BodyCode = ICWalker.GenerateCodeRecursive(Body.TreeRepresentation, MetaData, true);
 
             string startGuid = Guid.NewGuid().ToString().Replace("-", "");
+            string endGuid = Guid.NewGuid().ToString().Replace("-", "");
 
             string JumpRegister = ICWalker.GetFirstRegister(ConditionCode[2]);
 
-            int oneRegister = MetaData.GetTemporaryRegister(-111111);
             ConditionCode[0] = $"{startGuid}: {ConditionCode[0]}";
 
-            int validInstructions = BodyCode.Where((x) => x[0] != ';').Count();
-
             List<string> AllCode = new List<string>();
-            AllCode.Add($"Li $t{oneRegister}, 1");
             AllCode.AddRange(ConditionCode);
-            AllCode.Add($"Beq {JumpRegister}, $t{oneRegister}, {validInstructions + 1}");
+            AllCode.Add($"Beq {JumpRegister}, $zero, {endGuid}");
             AllCode.AddRange(BodyCode);
             AllCode.Add($"J {startGuid}");
+            AllCode.Add($"{endGuid}:");
 
 
             return new IntermediaryCodeMeta(AllCode.ToArray(), false);

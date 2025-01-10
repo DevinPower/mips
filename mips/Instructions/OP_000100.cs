@@ -26,7 +26,7 @@
         static void Beq((Computer Computer, int rs, int rt, int offset) passedArgs)
         {
             if (passedArgs.Computer.Memory[passedArgs.rs] == passedArgs.Computer.Memory[passedArgs.rt])
-                passedArgs.Computer.Jump(passedArgs.Computer.GetProgramCounter() + passedArgs.offset);
+                passedArgs.Computer.Jump(passedArgs.offset);
         }
 
         public void Execute(Computer Computer, int Instruction)

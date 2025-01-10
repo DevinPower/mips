@@ -221,6 +221,11 @@ namespace Lexer
                     return new CurlyEnd();
                 }
 
+                if (Previous().Value == ";")
+                {
+                    return new Semicolon();
+                }
+
                 return null;
             }
 
@@ -277,17 +282,23 @@ namespace Lexer
                 {
                     if (Expressions.Pop() is Variable LHS)
                     {
-                        if (ConsumeToken(Expressions, ASTRoot, scopeMeta) is Expression RHS)
-                        {
-                            string? Label = null;
-                            if (Previous(4).Value == "var")
-                                Label = Previous(3).Value;
+                        string? Label = null;
+                        if (Previous(3).Value == "var")
+                            Label = Previous(1).Value;
 
+                        Node<ASTExpression> RightParse = ParseToSymbol(typeof(Semicolon), scopeMeta);
+                        if (RightParse.Data is Expression RHS)
+                        {
                             ASTExpression Assignment = new Assignment(LHS, RHS, Label);
 
                             ASTRoot.AddChild(Assignment);
                             Assignment.TreeRepresentation.AddChild(LHS);
                             Assignment.TreeRepresentation.AddChild(RHS);
+
+                            foreach(var rhchild in RightParse.Children)
+                            {
+                                RHS.TreeRepresentation.AddChild(rhchild.Data);
+                            }
 
                             Expressions.Push(Assignment);
 
@@ -368,16 +379,33 @@ namespace Lexer
                 {
                     if (ConsumeToken(Expressions, ASTRoot, scopeMeta) is Expression RHS)
                     {
-                        BinaryOperation Operation = new BinaryOperation(LHS, 
-                            new Operator(OperatorType), RHS);
+                        if (LHS is Literal || LHS is Variable)
+                        {
+                            BinaryOperation Operation = new BinaryOperation(LHS,
+                                new Operator(OperatorType), RHS);
 
-                        ASTRoot.AddChild(Operation);
-                        Operation.TreeRepresentation.AddChild(LHS);
-                        Operation.TreeRepresentation.AddChild(RHS);
+                            ASTRoot.AddChild(Operation);
+                            Operation.TreeRepresentation.AddChild(LHS);
+                            Operation.TreeRepresentation.AddChild(RHS);
 
-                        Expressions.Push(Operation);
+                            Expressions.Push(Operation);
 
-                        return Operation;
+                            return Operation;
+                        }
+
+                        if (LHS is Expression LHExpression)
+                        {
+                            BinaryOperation Operation = new BinaryOperation(LHS,
+                                new Operator(OperatorType), RHS);
+
+                            Node<ASTExpression> opNode = ASTRoot.AddChild(Operation);
+                            opNode.AddChild(LHS.TreeRepresentation);
+                            opNode.AddChild(RHS);
+
+                            Expressions.Push(Operation);
+
+                            return Operation;
+                        }
                     }
                 }
             }
@@ -393,7 +421,11 @@ namespace Lexer
             while (current < _tokens.Count)
             {
                 if (IsOutOfRange()) break;
-                ConsumeToken(Expressions, ASTRoot, ScopeMeta);
+                //ConsumeToken(Expressions, ASTRoot, ScopeMeta);
+                Node<ASTExpression> Expression = ParseToSymbol(typeof(Semicolon), ScopeMeta);
+
+                Expressions.Push(Expression.Data); 
+                ASTRoot.AddChild(Expression);
             }
 
             ASTRoot.PrintPretty("", true);

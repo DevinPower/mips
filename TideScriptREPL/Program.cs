@@ -72,7 +72,7 @@ namespace TideScriptREPL
                             c.Compile(ic);
 
                             if (Key.Modifiers != ConsoleModifiers.Control)
-                                c.ProcessFull();
+                                c.ProcessFull();//StepProgram(c, ic);
 
                             c.DumpMemory();
 
@@ -216,6 +216,58 @@ namespace TideScriptREPL
             }
 
             return Lexer.Lexicate(sb.ToString(), ForDraw, PrintAnalysis);
+        }
+
+        static void StepProgram(Computer Computer, string[] Program)
+        {
+            ConsoleColor DefaultBackground = Console.BackgroundColor;
+
+            while (true)
+            {
+                Console.Clear();
+                Console.SetCursorPosition(0, 0);
+
+                for (int i = 0; i < Program.Length; i++)
+                {
+                    if (i == Computer.GetProgramCounter())
+                    {
+                        Console.BackgroundColor = ConsoleColor.Green;
+                        Console.ForegroundColor = ConsoleColor.Black;
+                    }
+                    else
+                    {
+                        Console.BackgroundColor = DefaultBackground;
+                        Console.ForegroundColor = ConsoleColor.White;
+                    }
+
+                    Console.WriteLine(Program[i]);
+                }
+
+                int widthSize = 20;
+
+                for (int iX = 0; 20 + (iX * widthSize) < Console.BufferWidth - 1; iX++)
+                {
+                    for (int iY = 0; iY < Console.BufferHeight - 1; iY++)
+                    {
+                        if ((iX * widthSize) + iY > Computer.Memory.Length - 1)
+                            break;
+                        Console.SetCursorPosition(20 + (iX * widthSize), iY);
+                        int ind = (iX * widthSize) + iY;
+                        int mem = Computer.Memory[ind];
+
+                        string index = ind.ToString();
+
+                        if (ind < Computer.InstructionRegisterDefinitions.Length)
+                            index = Computer.InstructionRegisterDefinitions[ind].PadLeft(4, ' ');
+
+                        Console.Write($"{index}={mem.ToString()}");
+                    }
+                }
+
+                Console.ReadKey();
+                if (Computer.StepProgram())
+                    break;
+            }
         }
 
         static void DrawContents(Lexer.Lexer Lexer, List<List<char>> Contents)

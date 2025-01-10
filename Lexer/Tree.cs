@@ -37,6 +37,9 @@ namespace Lexer
 
         public void AddChild(Node<T> Node)
         {
+            if (Node.Parent != null)
+                Node.Parent.Children.Remove(Node);
+
             Node.Parent = this;
             Children.Add((Node<T>)Node);
         }
@@ -62,9 +65,7 @@ namespace Lexer
                     }
 
                     if (Parent == null || expr.TreeRepresentation == null) Console.ForegroundColor = ConsoleColor.Gray;
-                }
-                
-                
+                }           
             }
 
             Console.Write(indent);
