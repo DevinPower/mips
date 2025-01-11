@@ -34,7 +34,8 @@ namespace Lexer
         };
 
         readonly string[] Keywords = new[] {
-            "if", "return", "while", "var", "function"
+            "if", "return", "while", "function",
+            "int", "float", "double", "string", "char"
         };
 
         readonly string[] Separators = new[] {

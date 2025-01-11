@@ -445,29 +445,10 @@ namespace TideScriptREPL
 
         static string[] Compile(List<Token> tokens)
         {
-            CompilationMeta rootMeta = new CompilationMeta();
-
             Parser parser = new Parser(tokens);
-            var result = parser.Parse(rootMeta);
+            var result = parser.Parse();
 
-            string[] intermediaryCode = ICWalker.GenerateCodeRecursive(result, rootMeta);
-            List<string> TotalProgram = new List<string>();
-
-            Console.ForegroundColor = ConsoleColor.Green;
-            foreach(string data in rootMeta.GetProgram())
-            {
-                Console.WriteLine(data);
-                TotalProgram.Add(data);
-            }
-
-            foreach(string s in intermediaryCode)
-            {
-                Console.WriteLine(s);
-                TotalProgram.Add(s);
-            }
-            Console.ForegroundColor = ConsoleColor.White;
-
-            return TotalProgram.ToArray();
+            return new string[] { };
         }
     }
 }
