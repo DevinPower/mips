@@ -32,6 +32,8 @@ namespace Lexer
                 return KeyWord();
             if (IsMatch(TokenTypes.MachineCode)) 
                 return MachineCode();
+            if (IsMatch(TokenTypes.Separator, "{"))
+                return ScriptBlock(false);
             if (IsLineEnd())
                 return null;
 
@@ -55,6 +57,50 @@ namespace Lexer
             return literal;
         }
 
+        Expression ScriptBlock(bool FreshScope)
+        {
+            List<Expression> expressions = new List<AST.Expression>();
+            while (!IsMatch(TokenTypes.Separator, "}"))
+            {
+                var result = Expression();
+                if (result != null)
+                {
+                    expressions.Add(result);
+                }
+
+                if (current == _tokens.Count)
+                    break;
+            }
+
+            CompilationMeta subScope = CompilationMeta;
+            if (FreshScope)
+                subScope = new CompilationMeta();
+
+            return new ScriptBlock(expressions, subScope);
+        }
+
+        List<(string, string)> GetArguments()
+        {
+            List<(string, string)> Arguments = new List<(string, string)> ();
+            if (!IsMatch(TokenTypes.Separator, "("))
+                throw new Exception("Expected arguments....");
+
+            while (!IsMatch(TokenTypes.Separator, ")"))
+            {
+                string type = Peek().Value;
+                Advance();
+                string name = Peek().Value;
+                Advance();
+
+                if (!IsMatch(TokenTypes.Separator, ",") && Peek().Value != ")")
+                    throw new Exception("Argument format issue");
+
+                Arguments.Add((type, name));
+            }
+
+            return Arguments;
+        }
+
         Expression KeyWord()
         {
             switch (Previous().Value)
@@ -66,6 +112,16 @@ namespace Lexer
                 case "char":
                     CompilationMeta.AddVariable(Peek().Value, Previous().Value);
                     return Expression();
+                case "function":
+                    {
+                        string FunctionName = Peek().Value;
+                        Advance();
+                        List<(string type, string name)> Arguments = GetArguments();
+                        Expression block = ScriptBlock(true);
+
+                        return new FunctionDefinition(FunctionName, (ScriptBlock)block);
+                    }
+                    break;
             }
 
             return null;
@@ -77,12 +133,24 @@ namespace Lexer
             {
                 case "+":
                     return OperatorTypes.ADD;
+                case "+=":
+                    return OperatorTypes.ADDASSIGN;
                 case "-":
                     return OperatorTypes.SUBTRACT;
+                case "-=":
+                    return OperatorTypes.SUBTRACTASSIGN;
                 case "*":
                     return OperatorTypes.MULTIPLY;
+                case "*=":
+                    return OperatorTypes.MULTIPLYASSIGN;
                 case "/":
                     return OperatorTypes.DIVIDE;
+                case "/=":
+                    return OperatorTypes.DIVIDEASSIGN;
+                case ">":
+                    return OperatorTypes.GREATERTHAN;
+                case "<":
+                    return OperatorTypes.LESSTHAN;
                 case "=":
                     return OperatorTypes.ASSIGN;
             }
@@ -92,6 +160,12 @@ namespace Lexer
         Expression Operator()
         {
             OperatorTypes type = GetOperatorType(Previous().Value);
+
+            if (type == OperatorTypes.ASSIGN)
+            {
+                return new Assignment((Variable)ExpressionStack.Pop(), Expression());
+            }
+
             if (IsMatch(TokenTypes.Literal))
             {
                 return new Operator(ExpressionStack.Pop(), type, Literal());
@@ -131,9 +205,15 @@ namespace Lexer
                 }
 
                 if (current == _tokens.Count)
-                    return expressions;
+                    break;
 
                 ExpressionStack.Clear();
+            }
+
+            List<string> Code = new List<string>();
+            foreach(Expression e in expressions)
+            {
+                e.GenerateCode(CompilationMeta, Code);
             }
 
             return expressions;
@@ -151,9 +231,21 @@ namespace Lexer
             return false;
         }
 
-        bool IsLineEnd()
+        bool IsMatch(TokenTypes type, string value)
         {
             if (current >= _tokens.Count) return false;
+            if (_tokens[current].TokenType == type && _tokens[current].Value == value)
+            {
+                Advance();
+                return true;
+            }
+
+            return false;
+        }
+
+        bool IsLineEnd()
+        {
+            if (current >= _tokens.Count) return true;
             if (_tokens[current].Value == ";" || _tokens[current].Value == "\n")
             {
                 Advance();
