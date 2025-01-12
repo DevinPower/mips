@@ -47,7 +47,21 @@ namespace Lexer
 
         Expression Literal()
         {
-            Literal literal = new Literal(Int32.Parse(Previous().Value));
+            Literal literal = null;
+            string literalValue = Previous().Value;
+            if (Int32.TryParse(literalValue, out int intLiteral))
+            {
+                literal = new IntLiteral(intLiteral);
+            }
+            else
+            {
+                string strGuid = CompilationMeta.AddString(literalValue);
+                literal = new StringLiteral(strGuid);
+            }
+
+            if (literal == null)
+                throw new Exception($"Literal value type unknown '{literalValue}'");
+
             if (IsMatch(TokenTypes.Operator))
             {
                 ExpressionStack.Push(literal);
@@ -242,6 +256,8 @@ namespace Lexer
             {
                 e.GenerateCode(CompilationMeta, Code);
             }
+
+            CompilationMeta.GenerateData(Code);
 
             return expressions;
         }

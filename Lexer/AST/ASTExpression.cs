@@ -10,8 +10,13 @@
 
     public class Literal : Expression
     {
+
+    }
+
+    public class IntLiteral : Literal
+    {
         public int Value { get; private set; }
-        public Literal(int Value)
+        public IntLiteral(int Value)
         {
             this.Value = Value;
         }
@@ -20,6 +25,22 @@
         {
             int ResultRegister = ScopeMeta.GetTempRegister();
             Code.Add($"Li $t{ResultRegister}, {Value}");
+            return ResultRegister;
+        }
+    }
+
+    public class StringLiteral : Literal
+    {
+        public string Value { get; private set; }
+        public StringLiteral(string Value)
+        {
+            this.Value = Value;
+        }
+
+        public override int GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
+        {
+            int ResultRegister = ScopeMeta.GetTempRegister();
+            Code.Add($"La $t{ResultRegister}, {Value}");
             return ResultRegister;
         }
     }

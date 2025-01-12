@@ -1,4 +1,6 @@
-﻿namespace Lexer
+﻿using Lexer.AST;
+
+namespace Lexer
 {
     public class VariableMeta
     {
@@ -9,6 +11,25 @@
         {
             this.Name = Name;
             this.Type = Type;
+        }
+
+        string HandleType()
+        {
+            switch (Type)
+            {
+                case "int":
+                    return $".word 1";
+                case "string":
+                    return $".word 1";
+            }
+
+            throw new Exception($";error generating data for Type {Type} on variable {Name}");
+
+        }
+
+        public string GenerateData()
+        {
+            return $"{Name}: {HandleType()}";
         }
     }
 
@@ -28,6 +49,7 @@
     {
         List<VariableMeta> Variables = new List<VariableMeta>();
         List<FunctionMeta> Functions = new List<FunctionMeta>();
+        Dictionary<string, string> StringData = new Dictionary<string, string>();
         public bool[] TempRegisters = new bool[8];
 
         public void AddFunction(string Name, string ReturnType)
@@ -49,6 +71,13 @@
             Variables.Add(new VariableMeta(Variable, Type));
         }
 
+        public string AddString(string Value)
+        {
+            string Name = System.Guid.NewGuid().ToString().Replace("-", "");
+            StringData.Add(Name, Value);
+            return Name;
+        }
+
         public int GetTempRegister()
         {
             for (int i = 0; i < TempRegisters.Length; i++)
@@ -61,6 +90,24 @@
             }
 
             throw new Exception("Out of registers exception");
+        }
+
+        public void GenerateData(List<string> Code)
+        {
+            int InserCount = 0;
+            Code.Insert(InserCount++, ".data");
+
+            foreach(VariableMeta variable in Variables)
+            {
+                Code.Insert(InserCount++, variable.GenerateData());
+            }
+
+            foreach(string key in StringData.Keys)
+            {
+                Code.Insert(InserCount++, $"{key}: .asciiz {StringData[key]}");
+            }
+
+            Code.Insert(InserCount++, ".main");
         }
 
         public void FreeTempRegister(int Index)
