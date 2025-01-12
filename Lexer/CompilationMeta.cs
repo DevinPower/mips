@@ -35,6 +35,15 @@
             Functions.Add(new FunctionMeta(Name, ReturnType));
         }
 
+        public FunctionMeta? GetFunction(string Name)
+        {
+            var Matches = Functions.Where((x) => x.Name == Name);
+            if (Matches.Count() != 1)
+                return null;
+
+            return Matches.First();
+        }
+
         public void AddVariable(string Variable, string Type)
         {
             Variables.Add(new VariableMeta(Variable, Type));

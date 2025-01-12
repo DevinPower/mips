@@ -42,6 +42,35 @@
         }
     }
 
+    public class FunctionCall : Expression
+    {
+        public string FunctionName { get; set; }
+        public List<Expression> Arguments { get; set; }
+        public FunctionCall(string FunctionName, List<Expression> Arguments)
+        {
+            this.FunctionName = FunctionName;
+            this.Arguments = Arguments;
+        }
+
+        public override int GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
+        {
+            int[] ArgumentRegisters = Arguments.Select((x) => x.GenerateCode(ScopeMeta, Code)).ToArray();
+
+            for (int i = 0; i < ArgumentRegisters.Length; i++)
+            {
+                int argumentRegister = ArgumentRegisters[i];
+                Code.Add($"Move $a{i}, $t{argumentRegister}");
+            }
+
+            Code.Add($"Jalr {FunctionName}");
+
+            int resultRegister = ScopeMeta.GetTempRegister();
+            Code.Add($"Li $t{resultRegister}, $v0");
+
+            return resultRegister;
+        }
+    }
+
     public class FunctionDefinition : Expression
     {
         public string Name { get; private set; }

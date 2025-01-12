@@ -117,7 +117,13 @@ namespace Lexer
                         string FunctionName = Peek().Value;
                         Advance();
                         List<(string type, string name)> Arguments = GetArguments();
+
+                        if (!IsMatch(TokenTypes.Separator, "{"))
+                            throw new Exception("Expected script block");
+
                         Expression block = ScriptBlock(true);
+
+                        CompilationMeta.AddFunction(FunctionName, "void");
 
                         return new FunctionDefinition(FunctionName, (ScriptBlock)block);
                     }
@@ -182,6 +188,27 @@ namespace Lexer
         Expression Identifier()
         {
             Variable identifier = new Variable(Previous().Value);
+            var FunctionData = CompilationMeta.GetFunction(identifier.Name);
+
+            if (FunctionData != null)
+            {
+                List<Expression> Arguments = new List<Expression>();
+                if (!IsMatch(TokenTypes.Separator, "("))
+                    throw new Exception("Expected arguments block");
+
+                while (!IsMatch(TokenTypes.Separator, ")"))
+                {
+                    if (IsMatch(TokenTypes.Identifier))
+                        Arguments.Add(Identifier());
+                    else if (IsMatch(TokenTypes.Literal))
+                        Arguments.Add(Literal());
+
+                    if (!IsMatch(TokenTypes.Separator, ",") && Peek().Value != ")")
+                        throw new Exception("Argument format issue");
+                }
+
+                return new FunctionCall(identifier.Name, Arguments);
+            }
 
             if (IsMatch(TokenTypes.Operator))
             {
