@@ -198,8 +198,14 @@ namespace mips
                 return -1;
             }
 
-            List<InputInstruction> Input = AllOperations.First((x) => x.OperationName == SplitLine[0]).inputInstructions.ToList();
-
+            var Matches = AllOperations.Where((x) => x.OperationName == SplitLine[0]);
+            
+            if (Matches.Count() == 0)
+            {
+                throw new Exception($"Operation '{SplitLine[0]}' unknown");
+            }
+            List<InputInstruction> Input = Matches.First().inputInstructions.ToList();
+            
             Input.Reverse();
 
             Func<string[], string, int, int>[] actions = new Func<string[], string, int, int>[]

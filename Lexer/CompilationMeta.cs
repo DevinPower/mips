@@ -47,10 +47,27 @@ namespace Lexer
 
     public class CompilationMeta
     {
+        CompilationMeta _Parent;
         List<VariableMeta> Variables = new List<VariableMeta>();
         List<FunctionMeta> Functions = new List<FunctionMeta>();
         Dictionary<string, string> StringData = new Dictionary<string, string>();
         public bool[] TempRegisters = new bool[8];
+        List<CompilationMeta> _childScopes = new List<CompilationMeta>();
+        VariableMeta[] Arguments = new VariableMeta[4];
+
+        public CompilationMeta(CompilationMeta Parent)
+        {
+            _Parent = Parent;
+        }
+
+        public CompilationMeta AddSubScope()
+        {
+            CompilationMeta newScope = new CompilationMeta(this);
+            _childScopes.Add(newScope);
+
+            return newScope;
+
+        }
 
         public void AddFunction(string Name, string ReturnType)
         {
@@ -69,6 +86,33 @@ namespace Lexer
         public void AddVariable(string Variable, string Type)
         {
             Variables.Add(new VariableMeta(Variable, Type));
+        }
+
+        public void AddArgument(string Name, string Type)
+        {
+            for(int i = 0; i < Arguments.Length; i++)
+            {
+                if (Arguments[i] == null)
+                {
+                    Arguments[i] = new VariableMeta(Name, Type);
+                    return;
+                }
+            }
+            throw new Exception("Too many arguments exception");
+        }
+
+        public int GetArgumentPosition(string Name)
+        {
+            for (int i = 0; i < Arguments.Length; i++)
+            {
+                if (Arguments[i] == null)
+                    return -1;
+
+                if (Arguments[i].Name == Name)
+                    return i;
+            }
+
+            return -1;
         }
 
         public string AddString(string Value)
@@ -104,15 +148,16 @@ namespace Lexer
 
             foreach(string key in StringData.Keys)
             {
-                Code.Insert(InserCount++, $"{key}: .asciiz {StringData[key]}");
+                Code.Insert(InserCount++, $"{key}: .asciiz \"{StringData[key]}\"");
             }
 
             Code.Insert(InserCount++, ".main");
         }
 
-        public void FreeTempRegister(int Index)
+        public void FreeTempRegister(RegisterResult Register)
         {
-            TempRegisters[Index] = false;
+            Console.WriteLine("Freeing temp register not implemented");
+            //TempRegisters[Index] = false;
         }
     }
 }

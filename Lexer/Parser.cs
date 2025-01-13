@@ -19,7 +19,7 @@ namespace Lexer
         public Parser(List<Token> Tokens)
         {
             _tokens = Tokens.Where((x) => x.TokenType != TokenTypes.Nothing).ToList();
-            CompilationMeta = new CompilationMeta();
+            CompilationMeta = new CompilationMeta(null);
         }
 
         Expression Expression()
@@ -33,8 +33,10 @@ namespace Lexer
             if (IsMatch(TokenTypes.MachineCode)) 
                 return MachineCode();
             if (IsMatch(TokenTypes.Separator, "{"))
-                return ScriptBlock(false);
+                return ScriptBlock(null);
             if (IsLineEnd())
+                return null;
+            if (IsMatch(TokenTypes.Comment))
                 return null;
 
             return null;
@@ -71,7 +73,7 @@ namespace Lexer
             return literal;
         }
 
-        Expression ScriptBlock(bool FreshScope)
+        Expression ScriptBlock(CompilationMeta subScope)
         {
             List<Expression> expressions = new List<AST.Expression>();
             while (!IsMatch(TokenTypes.Separator, "}"))
@@ -86,9 +88,8 @@ namespace Lexer
                     break;
             }
 
-            CompilationMeta subScope = CompilationMeta;
-            if (FreshScope)
-                subScope = new CompilationMeta();
+            if (subScope == null)
+                subScope = CompilationMeta;
 
             return new ScriptBlock(expressions, subScope);
         }
@@ -135,11 +136,31 @@ namespace Lexer
                         if (!IsMatch(TokenTypes.Separator, "{"))
                             throw new Exception("Expected script block");
 
-                        Expression block = ScriptBlock(true);
+                        CompilationMeta subScope = CompilationMeta.AddSubScope();
+                        Expression block = ScriptBlock(subScope);
 
                         CompilationMeta.AddFunction(FunctionName, "void");
+                        foreach (var argument in Arguments)
+                        {
+                            subScope.AddArgument(argument.name, argument.type);
+                        }
 
                         return new FunctionDefinition(FunctionName, (ScriptBlock)block);
+                    }
+                case "return":
+                    {
+                        Expression returnExpression = null;
+
+                        if (IsMatch(TokenTypes.Identifier))
+                            returnExpression = Identifier();
+                        else if (IsMatch(TokenTypes.Literal))
+                            returnExpression = Literal();
+                        //TODO: Support function calls
+
+                        if (returnExpression == null)
+                            throw new Exception("Invalid return type");
+
+                        return new ReturnStatement(returnExpression);
                     }
                     break;
             }
@@ -177,9 +198,23 @@ namespace Lexer
             throw new Exception("unknown operator type");
         }
 
+        bool IsSelfAssign(string Operator)
+        {
+            switch (Operator)
+            {
+                case "+=":
+                case "-=":
+                case "*=":
+                case "/=":
+                    return true;
+            }
+            return false;
+        }
+
         Expression Operator()
         {
             OperatorTypes type = GetOperatorType(Previous().Value);
+            bool SelfAssign = IsSelfAssign(Previous().Value);
 
             if (type == OperatorTypes.ASSIGN)
             {
@@ -188,12 +223,12 @@ namespace Lexer
 
             if (IsMatch(TokenTypes.Literal))
             {
-                return new Operator(ExpressionStack.Pop(), type, Literal());
+                return new Operator(ExpressionStack.Pop(), type, Literal(), SelfAssign);
             }
 
             if (IsMatch(TokenTypes.Identifier))
             {
-                return new Operator(ExpressionStack.Pop(), type, Identifier());
+                return new Operator(ExpressionStack.Pop(), type, Identifier(), SelfAssign);
             }
 
             return null;
@@ -233,7 +268,7 @@ namespace Lexer
             return identifier;
         }
 
-        public List<Expression> Parse()
+        public string[] Parse()
         {
             List<Expression> expressions = new List<Expression>();
 
@@ -259,7 +294,7 @@ namespace Lexer
 
             CompilationMeta.GenerateData(Code);
 
-            return expressions;
+            return Code.ToArray();
         }
 
         bool CheckType(TokenTypes type) => _tokens[current].TokenType == type;

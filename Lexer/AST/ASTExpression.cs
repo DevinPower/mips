@@ -1,10 +1,30 @@
 ﻿namespace Lexer.AST
 {
+    public class RegisterResult
+    {
+        public string Register { get; private set; }
+
+        public RegisterResult(string Register)
+        {
+            int registerStart = 0;
+
+            while (Register[registerStart] == '$')
+                registerStart++;
+
+            this.Register = Register.Substring(registerStart);
+        }
+
+        public override string ToString()
+        {
+            return $"${Register}";
+        }
+    }
+
     public class Expression
     {
-        public virtual int GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
+        public virtual RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
         {
-            return -1;
+            return null;
         }
     }
 
@@ -21,10 +41,10 @@
             this.Value = Value;
         }
 
-        public override int GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
+        public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
         {
-            int ResultRegister = ScopeMeta.GetTempRegister();
-            Code.Add($"Li $t{ResultRegister}, {Value}");
+            RegisterResult ResultRegister = new RegisterResult($"t{ScopeMeta.GetTempRegister()}");
+            Code.Add($"Li {ResultRegister}, {Value}");
             return ResultRegister;
         }
     }
@@ -37,10 +57,10 @@
             this.Value = Value;
         }
 
-        public override int GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
+        public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
         {
-            int ResultRegister = ScopeMeta.GetTempRegister();
-            Code.Add($"La $t{ResultRegister}, {Value}");
+            RegisterResult ResultRegister = new RegisterResult($"t{ScopeMeta.GetTempRegister()}");
+            Code.Add($"La {ResultRegister}, {Value}");
             return ResultRegister;
         }
     }
@@ -53,13 +73,19 @@
             this.Name = Name;
         }
 
-        public override int GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
+        public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
         {
-            int ResultRegister = ScopeMeta.GetTempRegister();
-
-            Code.Add($"Li $t{ResultRegister}, ${Name}");
-
-            return ResultRegister;
+            int ArgumentPosition = ScopeMeta.GetArgumentPosition(Name);
+            if (ArgumentPosition == -1) 
+            {
+                RegisterResult ResultRegister = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
+                Code.Add($"LB {ResultRegister}, {Name}(0)");
+                return ResultRegister;
+            }
+            else
+            {
+                return new RegisterResult($"a{ArgumentPosition}");
+            }
         }
     }
 
@@ -73,22 +99,16 @@
             this.Arguments = Arguments;
         }
 
-        public override int GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
+        public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
         {
-            int[] ArgumentRegisters = Arguments.Select((x) => x.GenerateCode(ScopeMeta, Code)).ToArray();
+            RegisterResult[] ArgumentRegisters = Arguments.Select((x) => x.GenerateCode(ScopeMeta, Code)).ToArray();
 
             for (int i = 0; i < ArgumentRegisters.Length; i++)
-            {
-                int argumentRegister = ArgumentRegisters[i];
-                Code.Add($"Move $a{i}, $t{argumentRegister}");
-            }
+                Code.Add($"Move $a{i}, {ArgumentRegisters[i].ToString()}");
 
-            Code.Add($"Jalr {FunctionName}");
+            Code.Add($"Jal {FunctionName}");
 
-            int resultRegister = ScopeMeta.GetTempRegister();
-            Code.Add($"Li $t{resultRegister}, $v0");
-
-            return resultRegister;
+            return new RegisterResult("v0");
         }
     }
 
@@ -102,15 +122,34 @@
             this.ScriptBlock = ScriptBlock;
         }
 
-        public override int GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
+        public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
         {
             string EndGuid = System.Guid.NewGuid().ToString().Replace("-", "");
 
             Code.Add($"J {EndGuid}");
             Code.Add($"{Name}:");
-            int resultRegister = ScriptBlock.GenerateCode(ScopeMeta, Code);
-            Code.Add($"{EndGuid}");
+            var resultRegister = ScriptBlock.GenerateCode(ScopeMeta, Code);
+            Code.Add($"Jr $ra");
+            Code.Add($"{EndGuid}:");
             return resultRegister;
+        }
+    }
+
+    public class ReturnStatement : Expression
+    {
+        public Expression ReturnValue { get; private set; }
+        public ReturnStatement(Expression ReturnValue)
+        {
+            this.ReturnValue = ReturnValue;
+        }
+
+        public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
+        {
+            var resultRegister = ReturnValue.GenerateCode(ScopeMeta, Code);
+
+            Code.Add($"Move $v0, {resultRegister}");
+
+            return new RegisterResult("v0");
         }
     }
 
@@ -123,34 +162,39 @@
     public class Operator : Expression
     {
         public Expression LHS { get; private set; }
+        public bool SelfAssign { get;private set; }
         public OperatorTypes Type { get; set; }
         public Expression RHS { get; private set; }
-        public Operator(Expression LHS, OperatorTypes Type, Expression RHS)
+        public Operator(Expression LHS, OperatorTypes Type, Expression RHS, bool SelfAssign)
         {
             this.LHS = LHS;
             this.Type = Type;
             this.RHS = RHS;
+            this.SelfAssign = SelfAssign;
         }
 
-        public string GetCommand(int Result, int Op1, int Op2)
+        public string GetCommand(RegisterResult Result, RegisterResult Op1, RegisterResult Op2)
         {
             return new string[] { $";assignment",
-                $"Add $t{Result}, $t{Op1}, $t{Op2}", $"Sub $t{Result}, $t{Op1}, $t{Op2}",
-                $"Mul $t{Result}, $t{Op1}, $t{Op2}", $"Div $t{Result}, $t{Op1}, $t{Op2}",
-                $"Slt $t{Result}, $t{Op1}, $t{Op2}", $"Bgt $t{Result}, $t{Op1}, $t{Op2}",
-                $"Beq $t{Result}, $t{Op1}, $t{Op2}", $"Add $t{Op1}, $t{Op1}, $t{Op2}",
-                $"Sub $t{Op1}, $t{Op1}, $t{Op2}", $"Mul $t{Op1}, $t{Op1}, $t{Op2}",
-                $"Div $t{Op1}, $t{Op1}, $t{Op2}"}[(int)Type];
+                $"Add {Result}, {Op1}, {Op2}", $"Sub {Result}, {Op1}, {Op2}",
+                $"Mul {Result}, {Op1}, {Op2}", $"Div {Result}, {Op1}, {Op2}",
+                $"Slt {Result}, {Op1}, {Op2}", $"Bgt {Result}, {Op1}, {Op2}",
+                $"Beq {Result}, {Op1}, {Op2}", $"Add {Op1}, {Op1}, {Op2}",
+                $"Sub {Op1}, {Op1}, {Op2}", $"Mul {Op1}, {Op1}, {Op2}",
+                $"Div {Op1}, {Op1}, {Op2}"}[(int)Type];
         }
 
-        public override int GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
+        public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
         {
-            int leftRegister = LHS.GenerateCode(ScopeMeta, Code);
-            int rightRegister = RHS.GenerateCode(ScopeMeta, Code);
+            var leftRegister = LHS.GenerateCode(ScopeMeta, Code);
+            var rightRegister = RHS.GenerateCode(ScopeMeta, Code);
 
-            int resultRegister = ScopeMeta.GetTempRegister();
+            RegisterResult resultRegister = new RegisterResult($"t{ScopeMeta.GetTempRegister()}");
 
             Code.Add(GetCommand(resultRegister, leftRegister, rightRegister));
+
+            if (SelfAssign)
+                Code.Add($"SB {leftRegister}, {((Variable)LHS).Name}(0)");
 
             ScopeMeta.FreeTempRegister(leftRegister);
             ScopeMeta.FreeTempRegister(rightRegister);
@@ -169,13 +213,13 @@
             this.RHS = RHS;
         }
 
-        public override int GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
+        public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
         {
-            int RightRegister = RHS.GenerateCode(ScopeMeta, Code);
+            RegisterResult LeftRegister = RHS.GenerateCode(ScopeMeta, Code);
 
-            Code.Add($"SB $t{RightRegister}, {Variable.Name}");
+            Code.Add($"SB {LeftRegister}, {Variable.Name}(0)");
 
-            return -1;
+            return null;
         }
     }
 
@@ -187,10 +231,10 @@
             this.Code = Code;
         }
 
-        public override int GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
+        public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
         {
             Code.Add(this.Code);
-            return -1;
+            return null;
         }
     }
 
@@ -204,14 +248,14 @@
             this.ScopedMeta = ScopedMeta;
         }
 
-        public override int GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
+        public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
         {
             foreach(Expression expression in Expressions)
             {
                 expression.GenerateCode(ScopedMeta, Code);
             }
 
-            return -1;
+            return null;
         }
     }
 }
