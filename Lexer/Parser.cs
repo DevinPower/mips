@@ -162,7 +162,32 @@ namespace Lexer
 
                         return new ReturnStatement(returnExpression);
                     }
-                    break;
+                case "if":
+                    {
+                        if (!IsMatch(TokenTypes.Separator, "("))
+                            throw new Exception("Expected condition");
+                        Expression condition = Expression();
+                        if (!IsMatch(TokenTypes.Separator, ")"))
+                            throw new Exception("Expected condition close");
+                        if (!IsMatch(TokenTypes.Separator, "{"))
+                            throw new Exception("Expected script block");
+                        ScriptBlock body = (ScriptBlock)ScriptBlock(null);
+
+                        return new Conditional(condition, body);
+                    }
+                case "while":
+                    {
+                        if (!IsMatch(TokenTypes.Separator, "("))
+                            throw new Exception("Expected condition");
+                        Expression condition = Expression();
+                        if (!IsMatch(TokenTypes.Separator, ")"))
+                            throw new Exception("Expected condition close");
+                        if (!IsMatch(TokenTypes.Separator, "{"))
+                            throw new Exception("Expected script block");
+                        ScriptBlock body = (ScriptBlock)ScriptBlock(null);
+
+                        return new WhileLoop(condition, body);
+                    }
             }
 
             return null;
@@ -194,6 +219,8 @@ namespace Lexer
                     return OperatorTypes.LESSTHAN;
                 case "=":
                     return OperatorTypes.ASSIGN;
+                case "==":
+                    return OperatorTypes.EQUAL;
             }
             throw new Exception("unknown operator type");
         }

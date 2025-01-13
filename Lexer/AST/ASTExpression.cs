@@ -1,4 +1,6 @@
-﻿namespace Lexer.AST
+﻿using System.Xml.Linq;
+
+namespace Lexer.AST
 {
     public class RegisterResult
     {
@@ -62,6 +64,59 @@
             RegisterResult ResultRegister = new RegisterResult($"t{ScopeMeta.GetTempRegister()}");
             Code.Add($"La {ResultRegister}, {Value}");
             return ResultRegister;
+        }
+    }
+
+    public class Conditional : Expression
+    {
+        public Expression Condition { get; private set; }
+        public ScriptBlock Body { get; private set; }
+
+        public Conditional(Expression Condition, ScriptBlock Body)
+        {
+            this.Condition = Condition;
+            this.Body = Body;
+        }
+
+        public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
+        {
+            string EndGuid = System.Guid.NewGuid().ToString().Replace("-", "");
+
+            var conditionRegister = Condition.GenerateCode(ScopeMeta, Code);
+
+            Code.Add($"Beq $zero, {conditionRegister}, {EndGuid}");
+            var resultRegister = Body.GenerateCode(ScopeMeta, Code);
+            Code.Add($"{EndGuid}:");
+
+            return resultRegister;
+        }
+    }
+
+    public class WhileLoop : Expression
+    {
+        public Expression Condition { get; private set; }
+        public ScriptBlock Body { get; private set; }
+
+        public WhileLoop(Expression Condition, ScriptBlock Body)
+        {
+            this.Condition = Condition;
+            this.Body = Body;
+        }
+
+        public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
+        {
+            string StartGuid = System.Guid.NewGuid().ToString().Replace("-", "");
+            string EndGuid = System.Guid.NewGuid().ToString().Replace("-", "");
+
+            Code.Add($"{StartGuid}:");
+            var conditionRegister = Condition.GenerateCode(ScopeMeta, Code);
+
+            Code.Add($"Beq $zero, {conditionRegister}, {EndGuid}");
+            var resultRegister = Body.GenerateCode(ScopeMeta, Code);
+            Code.Add($"J {StartGuid}");
+            Code.Add($"{EndGuid}:");
+
+            return resultRegister;
         }
     }
 
@@ -148,6 +203,7 @@
             var resultRegister = ReturnValue.GenerateCode(ScopeMeta, Code);
 
             Code.Add($"Move $v0, {resultRegister}");
+            Code.Add($"Jr $ra");
 
             return new RegisterResult("v0");
         }
@@ -177,9 +233,9 @@
         {
             return new string[] { $";assignment",
                 $"Add {Result}, {Op1}, {Op2}", $"Sub {Result}, {Op1}, {Op2}",
-                $"Mul {Result}, {Op1}, {Op2}", $"Div {Result}, {Op1}, {Op2}",
-                $"Slt {Result}, {Op1}, {Op2}", $"Bgt {Result}, {Op1}, {Op2}",
-                $"Beq {Result}, {Op1}, {Op2}", $"Add {Op1}, {Op1}, {Op2}",
+                $"Mult {Result}, {Op1}, {Op2}", $"Div {Result}, {Op1}, {Op2}",
+                $"Slt {Result}, {Op1}, {Op2}", $"Slt {Result}, {Op2}, {Op1}",
+                $"Seq {Result}, {Op1}, {Op2}", $"Add {Op1}, {Op1}, {Op2}",
                 $"Sub {Op1}, {Op1}, {Op2}", $"Mul {Op1}, {Op1}, {Op2}",
                 $"Div {Op1}, {Op1}, {Op2}"}[(int)Type];
         }
@@ -195,6 +251,10 @@
 
             if (SelfAssign)
                 Code.Add($"SB {leftRegister}, {((Variable)LHS).Name}(0)");
+
+            if (Type == OperatorTypes.MULTIPLY || Type == OperatorTypes.DIVIDE
+                || Type == OperatorTypes.MULTIPLYASSIGN || Type == OperatorTypes.DIVIDEASSIGN)
+                Code.Add($"Mflo {resultRegister}");
 
             ScopeMeta.FreeTempRegister(leftRegister);
             ScopeMeta.FreeTempRegister(rightRegister);

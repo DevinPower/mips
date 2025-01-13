@@ -156,7 +156,12 @@ namespace Lexer
 
         public void FreeTempRegister(RegisterResult Register)
         {
-            Console.WriteLine("Freeing temp register not implemented");
+            if (Register.Register.StartsWith("t"))
+            {
+                int registerIndex = int.Parse(Register.Register.Replace("t", ""));
+                TempRegisters[registerIndex] = false;
+            }
+
             //TempRegisters[Index] = false;
         }
     }
