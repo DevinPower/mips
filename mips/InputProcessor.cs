@@ -273,7 +273,26 @@ namespace mips
             int ParameterPosition = Int32.Parse(RegisterValue);
             string[] parts = FullLine[ParameterPosition].Split(new char[] { '(', ')' }, StringSplitOptions.RemoveEmptyEntries);
 
-            return int.Parse(parts[1]);
+            int address = -1;
+            int offset = -1;
+
+            if (!int.TryParse(parts[0], out address))
+            {
+                if (!LabelPositions.TryGetValue(parts[0], out address))
+                {
+                    address = Owner.Memory[Owner.GetRegisterAddress(parts[0])];
+                }
+            }
+
+            if (!int.TryParse(parts[1], out offset))
+            {
+                if (!LabelPositions.TryGetValue(parts[1], out offset))
+                {
+                    offset = Owner.Memory[Owner.GetRegisterAddress(parts[1])];
+                }
+            }
+
+            return address + offset;
         }
 
         int ReadCalculatedOuter(string[] FullLine, string RegisterValue, int Length)

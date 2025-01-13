@@ -30,11 +30,12 @@ namespace Lexer
        
         readonly string[] BinaryOperators = new[] { 
             "=", "==", "!=", "<", "<=", ">", ">=",
-            "+", "-", "*", "/", "%", "+=", "-=", "*=", "/="
+            "+", "-", "*", "/", "%", "+=", "-=", "*=", "/=",
+            "||", "&&"
         };
 
         readonly string[] Keywords = new[] {
-            "if", "return", "while", "function",
+            "if", "return", "while", "function", "else",
             "int", "float", "double", "string", "char"
         };
 
@@ -111,6 +112,14 @@ namespace Lexer
 
                 if (c == '|')
                 {
+                    //if (Contents[i + 1] != '|')
+                    //{
+                    //    LexedCode.Add(("||", TokenTypes.Operator, tokenStart, i + 1));
+                    //    CurrentToken = "";
+                    //    i += 2;
+                    //    continue;
+                    //}
+
                     i += 1;
                     string machineCode = "";
                     while (i < Contents.Length && Contents[i] != '\n')

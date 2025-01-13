@@ -156,6 +156,9 @@ namespace Lexer
 
         public void FreeTempRegister(RegisterResult Register)
         {
+            if (Register == null)
+                return;
+
             if (Register.Register.StartsWith("t"))
             {
                 int registerIndex = int.Parse(Register.Register.Replace("t", ""));

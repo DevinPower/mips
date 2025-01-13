@@ -38,6 +38,8 @@ namespace Lexer
                 return null;
             if (IsMatch(TokenTypes.Comment))
                 return null;
+            if (ExpressionStack.Count > 0 && IsMatch(TokenTypes.Operator))
+                return Operator();
 
             return null;
         }
@@ -67,7 +69,9 @@ namespace Lexer
             if (IsMatch(TokenTypes.Operator))
             {
                 ExpressionStack.Push(literal);
-                return Operator();
+                var result = Operator();
+                ExpressionStack.Push(result);
+                return result;
             }
 
             return literal;
@@ -126,7 +130,9 @@ namespace Lexer
                 case "double":
                 case "char":
                     CompilationMeta.AddVariable(Peek().Value, Previous().Value);
-                    return Expression();
+                    var result = Expression();
+                    ExpressionStack.Push(result);
+                    return result;
                 case "function":
                     {
                         string FunctionName = Peek().Value;
@@ -166,14 +172,30 @@ namespace Lexer
                     {
                         if (!IsMatch(TokenTypes.Separator, "("))
                             throw new Exception("Expected condition");
-                        Expression condition = Expression();
-                        if (!IsMatch(TokenTypes.Separator, ")"))
-                            throw new Exception("Expected condition close");
+
+                        List<Expression> Conditions = new List<Expression>();
+
+                        while (!IsMatch(TokenTypes.Separator, ")"))
+                        {
+                            Expression condition = Expression();
+                            Conditions.Add(condition);
+                            ExpressionStack.Push(condition);
+                        }
+                        
                         if (!IsMatch(TokenTypes.Separator, "{"))
                             throw new Exception("Expected script block");
                         ScriptBlock body = (ScriptBlock)ScriptBlock(null);
 
-                        return new Conditional(condition, body);
+                        ScriptBlock ElseBody = null;
+
+                        if (IsMatch(TokenTypes.Keyword, "else"))
+                        {
+                            if (!IsMatch(TokenTypes.Separator, "{"))
+                                throw new Exception("Expected script block");
+                            ElseBody = (ScriptBlock)ScriptBlock(null);
+                        }
+
+                        return new Conditional(Conditions, body, ElseBody);
                     }
                 case "while":
                     {
@@ -221,6 +243,10 @@ namespace Lexer
                     return OperatorTypes.ASSIGN;
                 case "==":
                     return OperatorTypes.EQUAL;
+                case "||":
+                    return OperatorTypes.LOGICALOR;
+                case "&&":
+                    return OperatorTypes.LOGICALAND;
             }
             throw new Exception("unknown operator type");
         }
@@ -245,17 +271,23 @@ namespace Lexer
 
             if (type == OperatorTypes.ASSIGN)
             {
-                return new Assignment((Variable)ExpressionStack.Pop(), Expression());
+                var result = new Assignment((Variable)ExpressionStack.Pop(), Expression());
+                ExpressionStack.Push(result);
+                return result;
             }
 
             if (IsMatch(TokenTypes.Literal))
             {
-                return new Operator(ExpressionStack.Pop(), type, Literal(), SelfAssign);
+                var result = new Operator(ExpressionStack.Pop(), type, Literal(), SelfAssign);
+                ExpressionStack.Push(result);
+                return result;
             }
 
             if (IsMatch(TokenTypes.Identifier))
             {
-                return new Operator(ExpressionStack.Pop(), type, Identifier(), SelfAssign);
+                var result = new Operator(ExpressionStack.Pop(), type, Identifier(), SelfAssign);
+                ExpressionStack.Push(result);
+                return result;
             }
 
             return null;
@@ -286,7 +318,7 @@ namespace Lexer
                 return new FunctionCall(identifier.Name, Arguments);
             }
 
-            if (IsMatch(TokenTypes.Operator))
+            if (Peek().Value != "&&" && IsMatch(TokenTypes.Operator))
             {
                 ExpressionStack.Push(identifier);
                 return Operator();
@@ -321,6 +353,10 @@ namespace Lexer
 
             CompilationMeta.GenerateData(Code);
 
+            foreach (var line in Code)
+            {
+                Console.WriteLine(line);
+            }
             return Code.ToArray();
         }
 

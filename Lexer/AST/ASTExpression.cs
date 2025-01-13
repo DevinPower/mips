@@ -69,24 +69,49 @@ namespace Lexer.AST
 
     public class Conditional : Expression
     {
-        public Expression Condition { get; private set; }
+        public List<Expression> Conditions { get; private set; }
         public ScriptBlock Body { get; private set; }
+        public ScriptBlock ElseBody { get; private set; }
 
-        public Conditional(Expression Condition, ScriptBlock Body)
+        public Conditional(List<Expression> Conditions, ScriptBlock Body, ScriptBlock ElseBody)
         {
-            this.Condition = Condition;
+            this.Conditions = Conditions;
             this.Body = Body;
+            this.ElseBody = ElseBody;
         }
 
         public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
         {
             string EndGuid = System.Guid.NewGuid().ToString().Replace("-", "");
+            string EndElseGuid = System.Guid.NewGuid().ToString().Replace("-", "");
+            List<RegisterResult> conditionRegisters = new List<RegisterResult>();
 
-            var conditionRegister = Condition.GenerateCode(ScopeMeta, Code);
+            foreach (var Condition in Conditions)
+            {
+                conditionRegisters.Add(Condition.GenerateCode(ScopeMeta, Code));
+            }
 
-            Code.Add($"Beq $zero, {conditionRegister}, {EndGuid}");
+            foreach (var conditionRegister in conditionRegisters)
+                Code.Add($"Beq $zero, {conditionRegister}, {EndGuid}");
+
             var resultRegister = Body.GenerateCode(ScopeMeta, Code);
+            if (ElseBody != null)
+                Code.Add($"J {EndElseGuid}");
+            
             Code.Add($"{EndGuid}:");
+
+            Body.FreeRegisters(ScopeMeta);
+
+            if (ElseBody != null)
+            {
+                resultRegister = ElseBody.GenerateCode(ScopeMeta, Code);
+            }
+            Code.Add($"{EndElseGuid}:");
+
+            foreach (var conditionRegister in conditionRegisters)
+            {
+                ScopeMeta.FreeTempRegister(conditionRegister);
+            }
 
             return resultRegister;
         }
@@ -115,6 +140,8 @@ namespace Lexer.AST
             var resultRegister = Body.GenerateCode(ScopeMeta, Code);
             Code.Add($"J {StartGuid}");
             Code.Add($"{EndGuid}:");
+
+            Body.FreeRegisters(ScopeMeta);
 
             return resultRegister;
         }
@@ -163,6 +190,11 @@ namespace Lexer.AST
 
             Code.Add($"Jal {FunctionName}");
 
+            foreach (var register in ArgumentRegisters)
+            {
+                ScopeMeta.FreeTempRegister(register);
+            }
+
             return new RegisterResult("v0");
         }
     }
@@ -186,6 +218,9 @@ namespace Lexer.AST
             var resultRegister = ScriptBlock.GenerateCode(ScopeMeta, Code);
             Code.Add($"Jr $ra");
             Code.Add($"{EndGuid}:");
+
+            ScriptBlock.FreeRegisters(ScopeMeta);
+
             return resultRegister;
         }
     }
@@ -205,6 +240,8 @@ namespace Lexer.AST
             Code.Add($"Move $v0, {resultRegister}");
             Code.Add($"Jr $ra");
 
+            ScopeMeta.FreeTempRegister(resultRegister);
+
             return new RegisterResult("v0");
         }
     }
@@ -213,7 +250,8 @@ namespace Lexer.AST
     {
         ASSIGN,
         ADD, SUBTRACT, MULTIPLY, DIVIDE, LESSTHAN, GREATERTHAN, EQUAL,
-        ADDASSIGN, SUBTRACTASSIGN, MULTIPLYASSIGN, DIVIDEASSIGN
+        ADDASSIGN, SUBTRACTASSIGN, MULTIPLYASSIGN, DIVIDEASSIGN,
+        LOGICALOR, LOGICALAND
     }
     public class Operator : Expression
     {
@@ -237,7 +275,8 @@ namespace Lexer.AST
                 $"Slt {Result}, {Op1}, {Op2}", $"Slt {Result}, {Op2}, {Op1}",
                 $"Seq {Result}, {Op1}, {Op2}", $"Add {Op1}, {Op1}, {Op2}",
                 $"Sub {Op1}, {Op1}, {Op2}", $"Mul {Op1}, {Op1}, {Op2}",
-                $"Div {Op1}, {Op1}, {Op2}"}[(int)Type];
+                $"Div {Op1}, {Op1}, {Op2}",
+                $"Or {Result}, {Op1}, {Op2}", $"And {Result}, {Op1}, {Op2}"}[(int)Type];
         }
 
         public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
@@ -279,6 +318,8 @@ namespace Lexer.AST
 
             Code.Add($"SB {LeftRegister}, {Variable.Name}(0)");
 
+            ScopeMeta.FreeTempRegister(LeftRegister);
+
             return null;
         }
     }
@@ -302,6 +343,7 @@ namespace Lexer.AST
     {
         public List<Expression> Expressions { get; private set; }
         public CompilationMeta ScopedMeta { get; private set; }
+        List<RegisterResult> _usedRegisters = new List<RegisterResult>();
         public ScriptBlock(List<Expression> Expressions, CompilationMeta ScopedMeta)
         {
             this.Expressions = Expressions;
@@ -312,10 +354,18 @@ namespace Lexer.AST
         {
             foreach(Expression expression in Expressions)
             {
-                expression.GenerateCode(ScopedMeta, Code);
+                _usedRegisters.Add(expression.GenerateCode(ScopedMeta, Code));
             }
 
             return null;
+        }
+
+        public void FreeRegisters(CompilationMeta ScopeMeta)
+        {
+            foreach (var register in _usedRegisters)
+            {
+                ScopedMeta.FreeTempRegister(register);
+            }
         }
     }
 }
