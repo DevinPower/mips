@@ -12,6 +12,7 @@ public class Computer
     
     int _programCounter;
     int _heapPointer;
+    int _memoryPointer;
 
     Action[] _Syscall;
     
@@ -56,12 +57,14 @@ public class Computer
 
     public void ProcessFull()
     {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
         Console.ForegroundColor = ConsoleColor.Yellow;
         int count = 0;
         while (!StepProgram()) count++;
+        watch.Stop();
         Console.ForegroundColor = ConsoleColor.White;
         Console.WriteLine();
-        Console.WriteLine($"Finished program with {count} instructions!");
+        Console.WriteLine($"Finished program with {count} instructions in {watch.ElapsedMilliseconds}ms");
         //DumpMemory();
     }
 
@@ -110,7 +113,8 @@ public class Computer
     void InitializeRegisters(int StackAddress)
     {
         Memory[0] = 0;
-        Memory[GetRegisterAddress("$sp")] = StackAddress;
+        Memory[GetRegisterAddress("$sp")] = StackAddress - 1;
+        _memoryPointer = StackAddress;
     }
 
     public void StoreHeap(int[] Value)
@@ -143,9 +147,7 @@ public class Computer
 
     public void StoreMemory(int Value)
     {
-        int memoryPointer = Memory[GetRegisterAddress("$sp")];
-        Memory[memoryPointer] = Value;
-        Memory[GetRegisterAddress("$sp")]++;
+        Memory[_memoryPointer++] = Value;
     }
 
     public bool StepProgram()
@@ -305,7 +307,7 @@ public class Computer
 
     void Print_Int()
     {
-        //Console.WriteLine(Registers[GetRegisterAddress("$a0")]);
+        Console.Write(Memory[GetRegisterAddress("$a0")]);
     }
 
     void Print_Float()
@@ -328,7 +330,7 @@ public class Computer
             int CurrentChar = Memory[memoryPointer++];
             if (CurrentChar == 0)
             {
-                Console.WriteLine(value.ToString());
+                Console.Write(value.ToString());
                 break;
             }
             value.Append((char)CurrentChar);

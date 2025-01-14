@@ -1,290 +1,171 @@
 ﻿using Lexer.AST;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Metadata.Ecma335;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Lexer
 {
-    public class CompilationArgumentEntry : CompilationDataEntry
+    public class VariableMeta
     {
-        public int ArgumentPosition { get; private set; }
-        public CompilationArgumentEntry(int ArgumentPosition, int Position, string Value, LiteralTypes Type) : base(Position, Value, Type)
-        {
-            this.ArgumentPosition = ArgumentPosition;
-        }
-    }
+        public string Name { get; set; }
+        public string Type { get; set; }
 
-    public class CompilationPointerEntry : CompilationDataEntry
-    {
-        public string OriginalName { get; private set; }
-        public CompilationPointerEntry(string OriginalName, int Position, string Value, LiteralTypes Type) : base(Position, Value, Type)
+        public VariableMeta(string Name, string Type)
         {
-            this.OriginalName = OriginalName;
-        }
-    }
-
-    public class CompilationDataEntry
-    { 
-        public int Position { get; }
-        string Value;
-        public LiteralTypes Type { get; private set; }
-
-        public string? GetValue()
-        {
-            if (Type == LiteralTypes.NUMBER) return $".word 1";
-            if (Type == LiteralTypes.STRING) return $".asciiz \"{Value}\"";
-            return $";unhandled compilation data entry for {Value}";
-        }
-
-        public CompilationDataEntry(int Position, string Value, LiteralTypes Type)
-        {
-            this.Position = Position;
-            this.Value = Value;
+            this.Name = Name;
             this.Type = Type;
+        }
+
+        string HandleType()
+        {
+            switch (Type)
+            {
+                case "int":
+                    return $".word 1";
+                case "string":
+                    return $".word 1";
+            }
+
+            throw new Exception($";error generating data for Type {Type} on variable {Name}");
+
+        }
+
+        public string GenerateData()
+        {
+            return $"{Name}: {HandleType()}";
         }
     }
 
     public class FunctionMeta
     {
-        public string Name { get; private set; }
-        public int ArgumentCount { get; private set; }
+        public string Name { get; set; }
+        public string ReturnType { get; set; }
 
-        public FunctionMeta(string Name, int ArgumentCount) 
-        { 
-            this.Name = Name;
-            this.ArgumentCount = ArgumentCount;
-        }
-    }
-
-    public class Initialization
-    {
-        int _loadTo;
-        int _loadValue;
-
-        public Initialization(int LoadTo, int LoadValue)
+        public FunctionMeta(string Name, string ReturnType)
         {
-            _loadTo = LoadTo;
-            _loadValue = LoadValue;
+            this.Name = Name;
+            this.ReturnType = ReturnType;
         }
     }
 
     public class CompilationMeta
     {
-        static int _scopeIDCount = 0;
-        CompilationMeta Parent;
-        public Dictionary<string, CompilationDataEntry> Variables = new Dictionary<string, CompilationDataEntry>();
-        int _dataCount = 0;
-        int[] _Registers = new int[8] { -1, -1, -1, -1, -1, -1, -1, -1 };
-        List<string> _VariableNames = new List<string>();
-        List<FunctionMeta> _Functions = new List<FunctionMeta>();
-        List<Initialization> _Initializations = new List<Initialization>();
-        List<CompilationMeta> _SubScopes = new List<CompilationMeta>();
-
-        public int ScopeID { get; private set; }
-
-        public CompilationMeta() 
-        {
-            SetScopeID();
-        }
+        CompilationMeta _Parent;
+        List<VariableMeta> Variables = new List<VariableMeta>();
+        List<FunctionMeta> Functions = new List<FunctionMeta>();
+        Dictionary<string, string> StringData = new Dictionary<string, string>();
+        public bool[] TempRegisters = new bool[8];
+        List<CompilationMeta> _childScopes = new List<CompilationMeta>();
+        VariableMeta[] Arguments = new VariableMeta[4];
 
         public CompilationMeta(CompilationMeta Parent)
         {
-            this.Parent = Parent;
-            SetScopeID();
-        }
-
-        void SetScopeID()
-        {
-            ScopeID = _scopeIDCount++;
+            _Parent = Parent;
         }
 
         public CompilationMeta AddSubScope()
         {
             CompilationMeta newScope = new CompilationMeta(this);
-            _SubScopes.Add(newScope);
+            _childScopes.Add(newScope);
+
             return newScope;
+
         }
 
-        public void AddFunction(string FunctionName, int ArgumentCount)
+        public void AddFunction(string Name, string ReturnType)
         {
-            _Functions.Add(new FunctionMeta(FunctionName, ArgumentCount));
+            Functions.Add(new FunctionMeta(Name, ReturnType));
         }
 
-        //Ascends up for scoping
-        public bool FunctionExists(string FunctionName)
+        public FunctionMeta? GetFunction(string Name)
         {
-            if (_Functions.Count(x=>x.Name == FunctionName) == 1)
-            {
-                return true;
-            }
-            else
-            {
-                if (Parent == null)
-                    return false;
+            var Matches = Functions.Where((x) => x.Name == Name);
+            if (Matches.Count() != 1)
+                return null;
 
-                return (Parent.FunctionExists(FunctionName));
-            }
+            return Matches.First();
         }
 
-        //Ascends up for scoping
-        public int FunctionArgumentCount(string FunctionName)
+        public void AddVariable(string Variable, string Type)
         {
-            if (_Functions.Count(x => x.Name == FunctionName) == 1)
-            {
-                return _Functions.First((x) => { return x.Name == FunctionName; }).ArgumentCount;
-            }
-            else
-            {
-                if (Parent == null)
-                    throw new Exception($"Function {FunctionName} does not exist");
-
-                return (Parent.FunctionArgumentCount(FunctionName));
-            }
+            Variables.Add(new VariableMeta(Variable, Type));
         }
 
-        //Descends up for scoping
-        public int LookupVariable(string Name)
+        public void AddArgument(string Name, string Type)
         {
-            if (!_VariableNames.Contains(Name))
-                _VariableNames.Add(Name);
-            return _VariableNames.IndexOf(Name) + (100 * ScopeID);
-        }
-
-        //public string LookupLabelByHashCode(int HashCode)
-        //{
-        //    return Variables.Keys.ToList().First((x) => x == HashCode.ToString());
-        //}
-
-        //Happens at compilation time, descends down
-        public string GetReferenceLabelByPointer(string PointerName)
-        {
-            var match = Variables.FirstOrDefault((pair) =>
+            for(int i = 0; i < Arguments.Length; i++)
             {
-                if (pair.Value is CompilationPointerEntry pointer)
+                if (Arguments[i] == null)
                 {
-                    return pointer.OriginalName == PointerName;
-                }
-                return false;
-            }, new KeyValuePair<string, CompilationDataEntry>("", null));
-
-            if (match.Value == null && match.Key == "")
-            {
-                foreach(var subSCope in _SubScopes)
-                {
-                    var subMatch = subSCope.GetReferenceLabelByPointer(PointerName);
-                    if (subMatch != "")
-                        return subMatch;
-                }
-                return "";
-            }
-
-            return match.Key;
-        }
-
-        public string GetVariableType(string Name)
-        {
-            if (!Variables.ContainsKey(Name))
-            {
-                if (Parent == null)
-                    throw new Exception($"Variable '{Name}' not found.");
-
-                return Parent.GetVariableType(Name);
-            }
-
-            return Variables[Name].Type.ToString();
-        }
-
-        public void PushInt(string Name, int DefaultValue)
-        {
-            if (Variables.ContainsKey(Name))
-                throw new Exception($"Variable {Name} already declared.");
-
-            Variables.Add(Name, new CompilationDataEntry(_dataCount += 1, DefaultValue.ToString(), LiteralTypes.NUMBER));
-        }
-
-        public void PushArgument(string Name, int ArgumentPosition)
-        {
-            if (Variables.ContainsKey(Name))
-                throw new Exception($"Variable {Name} already declared.");
-
-            Variables.Add(Name, new CompilationArgumentEntry(ArgumentPosition, _dataCount += 1, "0", LiteralTypes.NUMBER));
-        }
-
-        public string PushStaticString(string Value)
-        {
-            string Label = Guid.NewGuid().ToString().Replace("-", "");
-
-            PushString(Label, Value, true);
-
-            return Label;
-        }
-
-        public void PushString(string Name, string DefaultValue, bool IsStatic)
-        {
-            if (Variables.ContainsKey(Name))
-                throw new Exception($"Variable {Name} already declared.");
-
-            if (!IsStatic)
-            {
-                string Label = Guid.NewGuid().ToString().Replace("-", "");
-                Variables.Add(Label, new CompilationPointerEntry(Name, _dataCount + 1, "53", LiteralTypes.NUMBER));
-            }
-
-            Variables.Add(Name, new CompilationDataEntry(_dataCount += DefaultValue.Length, DefaultValue, LiteralTypes.STRING));
-        }
-
-        public int GetTemporaryRegister(int VariableIndex)
-        {
-            if (VariableIndex != -2)
-            {
-                for (int i = 0; i < _Registers.Length; i++)
-                {
-                    if (_Registers[i] == VariableIndex)
-                    {
-                        return i;
-                    }
+                    Arguments[i] = new VariableMeta(Name, Type);
+                    return;
                 }
             }
+            throw new Exception("Too many arguments exception");
+        }
 
-            for (int i = 0; i < _Registers.Length; i++)
+        public int GetArgumentPosition(string Name)
+        {
+            for (int i = 0; i < Arguments.Length; i++)
             {
-                if (_Registers[i] == -1)
+                if (Arguments[i] == null)
+                    return -1;
+
+                if (Arguments[i].Name == Name)
+                    return i;
+            }
+
+            return -1;
+        }
+
+        public string AddString(string Value)
+        {
+            string Name = System.Guid.NewGuid().ToString().Replace("-", "");
+            StringData.Add(Name, Value);
+            return Name;
+        }
+
+        public int GetTempRegister()
+        {
+            for (int i = 0; i < TempRegisters.Length; i++)
+            {
+                if (TempRegisters[i] == false)
                 {
-                    _Registers[i] = VariableIndex;
+                    TempRegisters[i] = true;
                     return i;
                 }
             }
 
-            throw new Exception("Register overflow exception");
+            throw new Exception("Out of registers exception");
         }
 
-        public string[] GetProgram()
+        public void GenerateData(List<string> Code)
         {
-            List<string> DataSection = new List<string>();
-            DataSection.Add(".data");
+            int InserCount = 0;
+            Code.Insert(InserCount++, ".data");
 
-            GetDataSectionRecusrive(DataSection);
+            foreach(VariableMeta variable in Variables)
+            {
+                Code.Insert(InserCount++, variable.GenerateData());
+            }
 
-            DataSection.Add(".main");
-            return DataSection.ToArray();
+            foreach(string key in StringData.Keys)
+            {
+                Code.Insert(InserCount++, $"{key}: .asciiz \"{StringData[key]}\"");
+            }
+
+            Code.Insert(InserCount++, ".main");
         }
 
-        void GetDataSectionRecusrive(List<string> CurrentList)
+        public void FreeTempRegister(RegisterResult Register)
         {
-            foreach (var variableKey in Variables.Keys)
+            if (Register == null)
+                return;
+
+            if (Register.Register.StartsWith("t"))
             {
-                string? value = Variables[variableKey].GetValue();
-                if (value == null) continue;
-                CurrentList.Add($"{variableKey}: {value}");
+                int registerIndex = int.Parse(Register.Register.Replace("t", ""));
+                TempRegisters[registerIndex] = false;
             }
 
-            foreach (var subScope in _SubScopes)
-            {
-                subScope.GetDataSectionRecusrive(CurrentList);
-            }
+            //TempRegisters[Index] = false;
         }
     }
 }

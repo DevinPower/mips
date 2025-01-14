@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
+using System.Net;
 
 namespace mips
 {
@@ -198,8 +199,14 @@ namespace mips
                 return -1;
             }
 
-            List<InputInstruction> Input = AllOperations.First((x) => x.OperationName == SplitLine[0]).inputInstructions.ToList();
-
+            var Matches = AllOperations.Where((x) => x.OperationName == SplitLine[0]);
+            
+            if (Matches.Count() == 0)
+            {
+                throw new Exception($"Operation '{SplitLine[0]}' unknown");
+            }
+            List<InputInstruction> Input = Matches.First().inputInstructions.ToList();
+            
             Input.Reverse();
 
             Func<string[], string, int, int>[] actions = new Func<string[], string, int, int>[]
@@ -267,6 +274,15 @@ namespace mips
             int ParameterPosition = Int32.Parse(RegisterValue);
             string[] parts = FullLine[ParameterPosition].Split(new char[] { '(', ')' }, StringSplitOptions.RemoveEmptyEntries);
 
+            if (LabelPositions.ContainsKey(parts[1]))
+            {
+                return LabelPositions[parts[1]];
+            }
+
+            int registerIndex = Computer.InstructionRegisterDefinitions.ToList().IndexOf(parts[1]);
+            if (registerIndex != -1)
+                return registerIndex;
+
             return int.Parse(parts[1]);
         }
 
@@ -280,7 +296,11 @@ namespace mips
                 return LabelPositions[parts[0]];
             }
 
-            return Computer.InstructionRegisterDefinitions.ToList().IndexOf(parts[0]);
+            int registerIndex = Computer.InstructionRegisterDefinitions.ToList().IndexOf(parts[0]);
+            if (registerIndex != -1)
+                return registerIndex;
+
+            return int.Parse(parts[0]);
         }
 
         int ReadImmediate(string[] FullLine, string ImmediateValue, int Length)

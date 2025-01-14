@@ -31,17 +31,18 @@
             Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Srav), 7, Srav, GetRdRtRsInstructions("000111")));
             Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Srl), 2, Srl, GetRdRtSaImmediateInstructions("000010")));
             Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Srlv), 6, Srlv, GetRdRtRsInstructions("000110")));
-            Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Div), 26, Div, GetRsRtInstructions("011010")));
-            Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Divu), 27, Divu, GetRsRtInstructions("011011")));
+            Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Div), 26, Div, GetBasicInstructionsWithFunctCode("011010")));
+            Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Divu), 27, Divu, GetBasicInstructionsWithFunctCode("011011")));
             Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Mfhi), 16, Mfhi, GetRdInstructions("010000")));
             Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Mflo), 18, Mflo, GetRdInstructions("010010")));
             Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Mthi), 17, Mthi, GetRsInstructions("010001")));
             Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Mtlo), 19, Mtlo, GetRsInstructions("010011")));
-            Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Mult), 24, Mult, GetRsRtInstructions("011000")));
-            Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Multu), 25, Multu, GetRsRtInstructions("011001")));
+            Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Mult), 24, Mult, GetBasicInstructionsWithFunctCode("011000")));
+            Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Multu), 25, Multu, GetBasicInstructionsWithFunctCode("011001")));
             Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Jalr), 9, Jalr, GetRsInstructions("001001")));
             Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Jr), 8, Jr, GetRsInstructions("001000")));
             Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Syscall), 12, Syscall, GetNoInstructionsWithFunctCode("001100")));
+            Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Seq), 58, Seq, GetBasicInstructionsWithFunctCode("111010")));
         }
 
         static void Add((Computer Computer, int rs, int rt, int rd, int sa) passedArgs)
@@ -152,6 +153,11 @@
         static void Slt((Computer Computer, int rs, int rt, int rd, int sa) passedArgs)
         {
             passedArgs.Computer.Memory[passedArgs.rd] = passedArgs.Computer.Memory[passedArgs.rs] < passedArgs.Computer.Memory[passedArgs.rt] ? 1 : 0;
+        }
+
+        static void Seq((Computer Computer, int rs, int rt, int rd, int sa) passedArgs)
+        {
+            passedArgs.Computer.Memory[passedArgs.rd] = passedArgs.Computer.Memory[passedArgs.rs] == passedArgs.Computer.Memory[passedArgs.rt] ? 1 : 0;
         }
 
         static void Sltu((Computer Computer, int rs, int rt, int rd, int sa) passedArgs)

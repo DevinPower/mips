@@ -10,15 +10,22 @@ namespace TideScriptREPL
 {
     internal class Program
     {
+        const string LastSession = "lastSession.td";
         static int count = 0;
         const int TABSIZE = 5;
         static readonly char[] AlwaysAlpha = new [] { '=', '+', '-', '$', '|', '>', '<', ',' };
 
         static void Main(string[] args)
         {
+            string[] ContentsDefault = null;
+            if (File.Exists(LastSession))
+            {
+                ContentsDefault = File.ReadLines(LastSession).ToArray();
+            }
+
             if (args.Length == 0)
             {
-                Interactive();
+                Interactive(ContentsDefault);
             }
             else
             {
@@ -26,12 +33,15 @@ namespace TideScriptREPL
             }
         }
 
-        static void Interactive()
+        static void Interactive(string[] ContentsDefault)
         {
             Console.CursorSize = 100;
 
             List<List<char>> Contents = new List<List<char>>();
-            Contents.Add(new List<char>());
+            if (ContentsDefault != null)
+                Contents = ContentsDefault.Select((x) => x.ToCharArray().ToList()).ToList();
+            else
+                Contents.Add(new List<char>());
 
             int currentLine = 0;
             int currentPosition = 0;
@@ -54,6 +64,9 @@ namespace TideScriptREPL
                     {
                         try
                         {
+                            string FileContents = string.Join(Environment.NewLine, Contents.Select(l => new string(l.ToArray())));
+                            File.WriteAllText(LastSession, FileContents);
+
                             Lexer.Lexer l2 = new Lexer.Lexer();
 
                             Console.Clear();
@@ -68,7 +81,7 @@ namespace TideScriptREPL
                                 Console.ReadKey();
                             }
 
-                            Computer c = new Computer(128, 32);
+                            Computer c = new Computer(512, 64);
                             c.Compile(ic);
 
                             if (Key.Modifiers != ConsoleModifiers.Control)
@@ -445,29 +458,8 @@ namespace TideScriptREPL
 
         static string[] Compile(List<Token> tokens)
         {
-            CompilationMeta rootMeta = new CompilationMeta();
-
             Parser parser = new Parser(tokens);
-            var result = parser.Parse(rootMeta);
-
-            string[] intermediaryCode = ICWalker.GenerateCodeRecursive(result, rootMeta);
-            List<string> TotalProgram = new List<string>();
-
-            Console.ForegroundColor = ConsoleColor.Green;
-            foreach(string data in rootMeta.GetProgram())
-            {
-                Console.WriteLine(data);
-                TotalProgram.Add(data);
-            }
-
-            foreach(string s in intermediaryCode)
-            {
-                Console.WriteLine(s);
-                TotalProgram.Add(s);
-            }
-            Console.ForegroundColor = ConsoleColor.White;
-
-            return TotalProgram.ToArray();
+            return parser.Parse();
         }
     }
 }

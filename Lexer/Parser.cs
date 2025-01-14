@@ -13,448 +13,395 @@ namespace Lexer
     {
         List<Token> _tokens;
         int current = 0;
+        Stack<Expression> ExpressionStack = new Stack<Expression>();
+        CompilationMeta CompilationMeta;
 
         public Parser(List<Token> Tokens)
         {
             _tokens = Tokens.Where((x) => x.TokenType != TokenTypes.Nothing).ToList();
+            CompilationMeta = new CompilationMeta(null);
         }
 
-        public ASTExpression ConsumeToken(Stack<ASTExpression> Expressions, Node<ASTExpression> ASTRoot, CompilationMeta scopeMeta)
+        Expression Expression()
         {
-            if (IsOutOfRange()) return null;
-
-            if (IsMatch(TokenTypes.Keyword))
-            {
-                if (CheckType(TokenTypes.Identifier))
-                {
-                    if (Previous().Value == "function")
-                    {
-                        string functionName = Peek().Value;
-
-                        Advance();
-
-                        Stack<ASTExpression> stack = new Stack<ASTExpression>();
-                        Node<ASTExpression> subRoot = new Node<ASTExpression>(null);
-                        //ASTExpression parsedExpression = ConsumeToken(stack, subRoot);
-
-                        CompilationMeta functionScope = scopeMeta.AddSubScope();
-
-                        Stack<ASTExpression> argstack = new Stack<ASTExpression>();
-                        Node<ASTExpression> argsubRoot = new Node<ASTExpression>(null);
-
-                        var args = ParseArguments(Expressions, ASTRoot.Parent, scopeMeta);
-                        Advance();
-
-                        for (int i = 0; i < args.Count; i++)
-                        {
-                            string? argument = args[i];
-                            functionScope.PushArgument(argument, i);
-                        }
-
-                        if (Peek().Value != "{")
-                            throw new Exception($"Unhandled exception for not seeing scriptblock on function {functionName}. Got {Peek().Value}");
-
-                        ASTExpression parsedBody = ConsumeToken(stack, subRoot, functionScope);
-
-                        ASTExpression function = new Function(functionName, (Expression)parsedBody, args.Count);
-                        Node<ASTExpression> functionNode = ASTRoot.AddChild(function);
-
-                        //Expression LoopCondition = new Expression();
-                        //var LoopConditionAST = functionNode.AddChild(LoopCondition);
-                        var LoopContentsAST = functionNode.AddChild(parsedBody);
-
-                        subRoot.Children[0].Children.ForEach(child => {
-                            LoopContentsAST.AddChild(child);
-                            child.Data.SetTreeRepresentation(child);
-                        });
-
-                        LoopContentsAST.Data.SetTreeRepresentation(LoopContentsAST);
-                        subRoot.Children[0].Data.SetTreeRepresentation(subRoot.Children[0]);
-
-                        Expressions.Push(function);
-
-                        scopeMeta.AddFunction(functionName, args.Count);
-
-                        return function;
-                    }
-
-                    //Declaration
-                    if (Previous().Value == "var")
-                    {
-                        string VarName = Peek().Value;
-                        string initialValue = PeekAhead(2).Value;
-
-                        if (Int32.TryParse(initialValue, out int literalVal))
-                        {
-                            Variable currentExpression = new Variable(Peek().Value, "NUMBER");
-                            scopeMeta.PushInt(VarName, literalVal);
-
-                            current++;
-                            Expressions.Push(currentExpression);
-
-                            return currentExpression;
-                        }
-                        else
-                        {
-                            Variable currentExpression = new Variable(Peek().Value, "STRING");
-                            scopeMeta.PushString(VarName, initialValue, false);
-
-                            current++;
-                            Expressions.Push(currentExpression);
-
-                            return currentExpression;
-                        }
-                    }
-                }
-
-                if (Previous().Value == "if")
-                {
-                    Stack<ASTExpression> stack = new Stack<ASTExpression>();
-                    Node<ASTExpression> subRoot = new Node<ASTExpression>(null);
-
-                    CompilationMeta conditionalMeta = scopeMeta.AddSubScope();
-
-                    ASTExpression parsedExpression = ConsumeToken(stack, subRoot, scopeMeta);
-
-                    if (Peek().Value != "{")
-                        throw new Exception("Unhandled exception for not seeing scriptblock on if statement");
-
-                    ASTExpression parsedBody = ConsumeToken(stack, subRoot, scopeMeta);
-
-                    ASTExpression conditional = new Conditional((Expression)parsedExpression, (Expression)parsedBody);
-
-                    Node<ASTExpression> conditionalNode = ASTRoot.AddChild(conditional);
-
-                    Expression ConditionalContents = new Expression();
-                    Expression ConditionalCondition = new Expression();
-                    var ConditionalConditionAST = conditionalNode.AddChild(ConditionalCondition);
-                    var ConditionalContentsAST = conditionalNode.AddChild(ConditionalContents);
-
-                    subRoot.Children[0].Children.ForEach(child => {
-                        ConditionalConditionAST.AddChild(child);
-                        child.Data.SetTreeRepresentation(child);
-                    });
-                    subRoot.Children[1].Children.ForEach(child => {
-                        ConditionalContentsAST.AddChild(child);
-                        child.Data.SetTreeRepresentation(child);
-                    });
-
-                    ConditionalConditionAST.Data.SetTreeRepresentation(ConditionalConditionAST);
-                    ConditionalContentsAST.Data.SetTreeRepresentation(ConditionalContentsAST);
-
-                    subRoot.Children[0].Data.SetTreeRepresentation(subRoot.Children[0]);
-                    subRoot.Children[1].Data.SetTreeRepresentation(subRoot.Children[1]);
-
-                    Expressions.Push(conditional);
-
-                    return conditional;
-                }
-
-                if (Previous().Value == "while")
-                {
-                    Stack<ASTExpression> stack = new Stack<ASTExpression>();
-                    Node<ASTExpression> subRoot = new Node<ASTExpression>(null);
-
-                    CompilationMeta loopMeta = scopeMeta.AddSubScope();
-
-                    ASTExpression parsedExpression = ConsumeToken(stack, subRoot, scopeMeta);
-
-                    if (Peek().Value != "{")
-                        throw new Exception("Unhandled exception for not seeing scriptblock on while loop");
-
-                    ASTExpression parsedBody = ConsumeToken(stack, subRoot, scopeMeta);
-
-                    ASTExpression loop = new WhileLoop((Expression)parsedExpression, (Expression)parsedBody);
-                    Node<ASTExpression> loopNode = ASTRoot.AddChild(loop);
-
-                    Expression LoopContents = new Expression();
-                    Expression LoopCondition = new Expression();
-                    var LoopConditionAST = loopNode.AddChild(LoopCondition);
-                    var LoopContentsAST = loopNode.AddChild(LoopContents);
-
-                    subRoot.Children[0].Children.ForEach(child => { 
-                        LoopConditionAST.AddChild(child); 
-                        child.Data.SetTreeRepresentation(child); 
-                    });
-                    subRoot.Children[1].Children.ForEach(child => { 
-                        LoopContentsAST.AddChild(child); 
-                        child.Data.SetTreeRepresentation(child); 
-                    });
-
-                    LoopConditionAST.Data.SetTreeRepresentation(LoopConditionAST);
-                    LoopContentsAST.Data.SetTreeRepresentation(LoopContentsAST);
-
-                    subRoot.Children[0].Data.SetTreeRepresentation(subRoot.Children[0]);
-                    subRoot.Children[1].Data.SetTreeRepresentation(subRoot.Children[1]);
-
-                    Expressions.Push(loop);
-
-                    return loop;
-                }
-
-                return null;
-            }
-
-            if (IsMatch(TokenTypes.Separator))
-            {
-                if (Previous().Value == "(")
-                {
-                    Stack<ASTExpression> stack = new Stack<ASTExpression>();
-                    Node<ASTExpression> parsedExpression = ParseToSymbol(typeof(ParanEnd), scopeMeta, out stack);
-                    ASTRoot.AddChild(parsedExpression);
-                    return parsedExpression.Data;
-                }
-
-                if (Previous().Value == "{")
-                {
-                    Stack<ASTExpression> stack = new Stack<ASTExpression>();
-                    Node<ASTExpression> parsedExpression = ParseToSymbol(typeof(CurlyEnd), scopeMeta, out stack);
-                    ASTRoot.AddChild(parsedExpression);
-                    return parsedExpression.Data;
-                }
-
-                if (Previous().Value == ")")
-                {
-                    return new ParanEnd();
-                }
-
-                if (Previous().Value == "}")
-                {
-                    return new CurlyEnd();
-                }
-
-                if (Previous().Value == ";")
-                {
-                    return new Semicolon();
-                }
-
-                return null;
-            }
-
-            if (IsMatch(TokenTypes.Identifier))
-            {
-                if (scopeMeta.FunctionExists(Previous().Value))
-                {
-                    string FunctionName = Previous().Value;
-                    int argCount = scopeMeta.FunctionArgumentCount(FunctionName);
-
-                    Advance();
-
-                    List<Operand> arguments = new List<Operand>();
-                    for (int i = 0; i < argCount; i++)
-                    {
-                        var result = ConsumeToken(Expressions, ASTRoot, scopeMeta);
-                        if (result is Operand operand)
-                        {
-                            arguments.Add(operand);
-                        }
-                    }
-
-                    FunctionCall jumpInstruction = new FunctionCall(FunctionName, arguments);
-
-                    ASTRoot.AddChild(jumpInstruction);
-                    Expressions.Push(jumpInstruction);
-
-                    return jumpInstruction;
-                }
-
-                Token previous = Previous();
-
-                Variable currentExpression = new Variable(previous.Value,
-                    scopeMeta.GetVariableType(previous.Value));
-
-                Expressions.Push(currentExpression);
-                
-                return currentExpression;
-            }
-
-            if (IsMatch(TokenTypes.MachineCode))
-            {
-                MachineCode machineExpression = new MachineCode(Previous().Value);
-
-                ASTRoot.AddChild(machineExpression);
-                Expressions.Push(machineExpression);
-
-                return machineExpression;
-            }
-
-            if (IsMatch(TokenTypes.Operator))
-            {
-                if (Previous().Value == "=")
-                {
-                    if (Expressions.Pop() is Variable LHS)
-                    {
-                        string? Label = null;
-                        if (Previous(3).Value == "var")
-                            Label = Previous(1).Value;
-
-                        Stack<ASTExpression> stack = new Stack<ASTExpression>();
-
-                        Node<ASTExpression> assignmentExpression = ParseToSymbol(typeof(Semicolon), scopeMeta, out stack);
-
-                        if (stack.Pop() is Expression expression)
-                        {
-                            Assignment assignment = new Assignment(LHS, expression, Label);
-                            var newNode = ASTRoot.AddChild(assignment);
-                            Expressions.Push(assignment);
-                            newNode.AddChild(LHS);
-
-                            newNode.AddChild(expression.TreeRepresentation);
-
-                            return assignment;
-                        }
-                    }
-                }
-
-                //arithmetic
-                if (HandleOperator("+", Expressions, ASTRoot, OperatorTypes.ADD, scopeMeta) is var addResult && addResult != null)
-                    return addResult;
-
-                if (HandleOperator("-", Expressions, ASTRoot, OperatorTypes.SUBTRACT, scopeMeta) is var subResult && subResult != null)
-                    return subResult;
-
-                if (HandleOperator("*", Expressions, ASTRoot, OperatorTypes.MULTIPLY, scopeMeta) is var multResult && multResult != null)
-                    return multResult;
-
-                if (HandleOperator("/", Expressions, ASTRoot, OperatorTypes.DIVIDE, scopeMeta) is var divResult && divResult != null)
-                    return divResult;
-
-                if (HandleOperator("+=", Expressions, ASTRoot, OperatorTypes.ADDASSIGN, scopeMeta) is var addaResult && addaResult != null)
-                    return addaResult;
-
-                //comparison
-                if (HandleOperator("<", Expressions, ASTRoot, OperatorTypes.LESSTHAN, scopeMeta) is var lessResult && lessResult != null)
-                    return lessResult;
-            }
-
             if (IsMatch(TokenTypes.Literal))
-            {
-                string PreviousValue = Previous().Value;
-
-                if (Int32.TryParse(PreviousValue, out int result))
-                {
-                    //_meta.PushInt(Previous().Value.GetHashCode().ToString(), result);
-                    Literal literal = new Literal(LiteralTypes.NUMBER, result);
-
-                    Expressions.Push(literal);
-
-                    return literal;
-                }
-                else
-                {
-                    //_meta.PushString(Previous(3).Value, PreviousValue);
-                    Literal literal = new Literal(LiteralTypes.STRING, PreviousValue);
-
-                    Expressions.Push(literal);
-
-                    return literal;
-                }
-            }
-
-            if (IsMatch(TokenTypes.Nothing) || IsMatch(TokenTypes.Comment)) return null;   //Do Nothing
-
+                return Literal();
+            if (IsMatch(TokenTypes.Identifier))
+                return Identifier();
+            if (IsMatch(TokenTypes.Keyword))
+                return KeyWord();
+            if (IsMatch(TokenTypes.MachineCode)) 
+                return MachineCode();
+            if (IsMatch(TokenTypes.Separator, "{"))
+                return ScriptBlock(null);
+            if (IsLineEnd())
+                return null;
+            if (IsMatch(TokenTypes.Comment))
+                return null;
+            if (ExpressionStack.Count > 0 && IsMatch(TokenTypes.Operator))
+                return Operator();
 
             return null;
         }
 
-        List<string> ParseArguments(Stack<ASTExpression> Expressions, Node<ASTExpression> ASTRoot, CompilationMeta scopeMeta)
+        Expression MachineCode()
         {
-            Advance();
-            List<string> Arguments = new List<string>();
-            while (Peek().Value != ")")
+            return new MachineCode(Previous().Value);
+        }
+
+        Expression Literal()
+        {
+            Literal literal = null;
+            string literalValue = Previous().Value;
+            if (Int32.TryParse(literalValue, out int intLiteral))
             {
-                Arguments.Add(Peek().Value.Replace(",", "").Trim());
+                literal = new IntLiteral(intLiteral);
+            }
+            else
+            {
+                string strGuid = CompilationMeta.AddString(literalValue);
+                literal = new StringLiteral(strGuid);
+            }
+
+            if (literal == null)
+                throw new Exception($"Literal value type unknown '{literalValue}'");
+
+            if (Peek().Value != "&&" && IsMatch(TokenTypes.Operator))
+            {
+                ExpressionStack.Push(literal);
+                return Operator();
+            }
+
+            //if (IsMatch(TokenTypes.Operator))
+            //{
+            //    ExpressionStack.Push(literal);
+            //    var result = Operator();
+            //    ExpressionStack.Push(result);
+            //    return result;
+            //}
+
+            return literal;
+        }
+
+        Expression ScriptBlock(CompilationMeta subScope)
+        {
+            List<Expression> expressions = new List<AST.Expression>();
+            while (!IsMatch(TokenTypes.Separator, "}"))
+            {
+                var result = Expression();
+                if (result != null)
+                {
+                    expressions.Add(result);
+                }
+
+                if (current == _tokens.Count)
+                    break;
+            }
+
+            if (subScope == null)
+                subScope = CompilationMeta;
+
+            return new ScriptBlock(expressions, subScope);
+        }
+
+        List<(string, string)> GetArguments()
+        {
+            List<(string, string)> Arguments = new List<(string, string)> ();
+            if (!IsMatch(TokenTypes.Separator, "("))
+                throw new Exception("Expected arguments....");
+
+            while (!IsMatch(TokenTypes.Separator, ")"))
+            {
+                string type = Peek().Value;
                 Advance();
+                string name = Peek().Value;
+                Advance();
+
+                if (!IsMatch(TokenTypes.Separator, ",") && Peek().Value != ")")
+                    throw new Exception("Argument format issue");
+
+                Arguments.Add((type, name));
             }
 
             return Arguments;
         }
 
-        ASTExpression HandleOperator(string OperatorSymbol, Stack<ASTExpression> Expressions, Node<ASTExpression> ASTRoot, OperatorTypes OperatorType, CompilationMeta scopeMeta)
+        Expression KeyWord()
         {
-            if (Previous().Value == OperatorSymbol)
+            switch (Previous().Value)
             {
-                if (Expressions.Pop() is Expression LHS)
-                {
-                    if (ConsumeToken(Expressions, ASTRoot, scopeMeta) is Expression RHS)
+                case "int":
+                case "string":
+                case "float":
+                case "double":
+                case "char":
+                    CompilationMeta.AddVariable(Peek().Value, Previous().Value);
+                    var result = Expression();
+                    ExpressionStack.Push(result);
+                    return result;
+                case "function":
                     {
-                        if (LHS is Literal || LHS is Variable)
+                        string FunctionName = Peek().Value;
+                        Advance();
+                        List<(string type, string name)> Arguments = GetArguments();
+
+                        if (!IsMatch(TokenTypes.Separator, "{"))
+                            throw new Exception("Expected script block");
+
+                        CompilationMeta subScope = CompilationMeta.AddSubScope();
+                        Expression block = ScriptBlock(subScope);
+
+                        CompilationMeta.AddFunction(FunctionName, "void");
+                        foreach (var argument in Arguments)
                         {
-                            BinaryOperation Operation = new BinaryOperation(LHS,
-                                new Operator(OperatorType), RHS);
-
-                            ASTRoot.AddChild(Operation);
-                            Operation.TreeRepresentation.AddChild(LHS);
-                            Operation.TreeRepresentation.AddChild(RHS);
-
-                            Expressions.Push(Operation);
-
-                            return Operation;
+                            subScope.AddArgument(argument.name, argument.type);
                         }
 
-                        if (LHS is Expression LHExpression)
-                        {
-                            BinaryOperation Operation = new BinaryOperation(LHS,
-                                new Operator(OperatorType), RHS);
-
-                            Node<ASTExpression> opNode = ASTRoot.AddChild(Operation);
-                            opNode.AddChild(LHS.TreeRepresentation);
-                            opNode.AddChild(RHS);
-
-                            Expressions.Push(Operation);
-
-                            return Operation;
-                        }
+                        return new FunctionDefinition(FunctionName, (ScriptBlock)block);
                     }
-                }
+                case "return":
+                    {
+                        Expression returnExpression = null;
+
+                        if (IsMatch(TokenTypes.Identifier))
+                            returnExpression = Identifier();
+                        else if (IsMatch(TokenTypes.Literal))
+                            returnExpression = Literal();
+                        //TODO: Support function calls
+
+                        if (returnExpression == null)
+                            throw new Exception("Invalid return type");
+
+                        return new ReturnStatement(returnExpression);
+                    }
+                case "if":
+                    {
+                        if (!IsMatch(TokenTypes.Separator, "("))
+                            throw new Exception("Expected condition");
+
+                        List<Expression> Conditions = new List<Expression>();
+
+                        while (!IsMatch(TokenTypes.Separator, ")"))
+                        {
+                            Expression condition = Expression();
+                            Conditions.Add(condition);
+                            ExpressionStack.Push(condition);
+                        }
+                        
+                        if (!IsMatch(TokenTypes.Separator, "{"))
+                            throw new Exception("Expected script block");
+                        ScriptBlock body = (ScriptBlock)ScriptBlock(null);
+
+                        ScriptBlock ElseBody = null;
+
+                        if (IsMatch(TokenTypes.Keyword, "else"))
+                        {
+                            if (!IsMatch(TokenTypes.Separator, "{"))
+                                throw new Exception("Expected script block");
+                            ElseBody = (ScriptBlock)ScriptBlock(null);
+                        }
+
+                        return new Conditional(Conditions, body, ElseBody);
+                    }
+                case "while":
+                    {
+                        if (!IsMatch(TokenTypes.Separator, "("))
+                            throw new Exception("Expected condition");
+                        Expression condition = Expression();
+                        if (!IsMatch(TokenTypes.Separator, ")"))
+                            throw new Exception("Expected condition close");
+                        if (!IsMatch(TokenTypes.Separator, "{"))
+                            throw new Exception("Expected script block");
+                        ScriptBlock body = (ScriptBlock)ScriptBlock(null);
+
+                        return new WhileLoop(condition, body);
+                    }
             }
 
             return null;
         }
 
-        public Node<ASTExpression> Parse(CompilationMeta ScopeMeta)
+        OperatorTypes GetOperatorType(string Operator)
         {
-            Stack<ASTExpression> Expressions = new Stack<ASTExpression>();
-            Node<ASTExpression> ASTRoot = new Node<ASTExpression>(new Expression());
-            Stack<ASTExpression> stack = new Stack<ASTExpression>();
-
-            while (current < _tokens.Count)
+            switch (Operator)
             {
-                if (IsOutOfRange()) break;
-                //ConsumeToken(Expressions, ASTRoot, ScopeMeta);
-                Node<ASTExpression> Expression = ParseToSymbol(typeof(Semicolon), ScopeMeta, out stack);
-
-                Expressions.Push(Expression.Data); 
-                ASTRoot.AddChild(Expression);
+                case "+":
+                    return OperatorTypes.ADD;
+                case "+=":
+                    return OperatorTypes.ADDASSIGN;
+                case "-":
+                    return OperatorTypes.SUBTRACT;
+                case "-=":
+                    return OperatorTypes.SUBTRACTASSIGN;
+                case "*":
+                    return OperatorTypes.MULTIPLY;
+                case "*=":
+                    return OperatorTypes.MULTIPLYASSIGN;
+                case "/":
+                    return OperatorTypes.DIVIDE;
+                case "/=":
+                    return OperatorTypes.DIVIDEASSIGN;
+                case ">":
+                    return OperatorTypes.GREATERTHAN;
+                case "<":
+                    return OperatorTypes.LESSTHAN;
+                case "=":
+                    return OperatorTypes.ASSIGN;
+                case "==":
+                    return OperatorTypes.EQUAL;
+                case "||":
+                    return OperatorTypes.LOGICALOR;
+                case "&&":
+                    return OperatorTypes.LOGICALAND;
             }
-
-            ASTRoot.PrintPretty("", true);
-
-            return ASTRoot;
+            throw new Exception("unknown operator type");
         }
 
-        public Node<ASTExpression> ParseToSymbol(Type SymbolType, CompilationMeta ScopeMeta, out Stack<ASTExpression> Expressions)
+        bool IsSelfAssign(string Operator)
         {
-            Stack<ASTExpression> _expressions = new Stack<ASTExpression>();
-            Node<ASTExpression> ASTRoot = new Node<ASTExpression>(new Expression());
-
-            while (current < _tokens.Count)
+            switch (Operator)
             {
-                if (IsOutOfRange()) break;
-                var currentToken = ConsumeToken(_expressions, ASTRoot, ScopeMeta);
-                if (currentToken == null) continue;
-                if (currentToken.GetType() == SymbolType) break;
+                case "+=":
+                case "-=":
+                case "*=":
+                case "/=":
+                    return true;
+            }
+            return false;
+        }
+
+        Expression Operator()
+        {
+            OperatorTypes type = GetOperatorType(Previous().Value);
+            bool SelfAssign = IsSelfAssign(Previous().Value);
+
+            if (type == OperatorTypes.ASSIGN)
+            {
+                var result = new Assignment((Variable)ExpressionStack.Pop(), Expression());
+                ExpressionStack.Push(result);
+                return result;
             }
 
-            Expressions = _expressions;
+            if (IsMatch(TokenTypes.Literal))
+            {
+                var result = new Operator(ExpressionStack.Pop(), type, Literal(), SelfAssign);
+                ExpressionStack.Push(result);
+                return result;
+            }
 
-            return ASTRoot;
+            if (IsMatch(TokenTypes.Identifier))
+            {
+                var result = new Operator(ExpressionStack.Pop(), type, Identifier(), SelfAssign);
+                ExpressionStack.Push(result);
+                return result;
+            }
+
+            return null;
+        }
+
+        Expression Identifier()
+        {
+            Variable identifier = new Variable(Previous().Value);
+            var FunctionData = CompilationMeta.GetFunction(identifier.Name);
+
+            if (FunctionData != null)
+            {
+                List<Expression> Arguments = new List<Expression>();
+                if (!IsMatch(TokenTypes.Separator, "("))
+                    throw new Exception("Expected arguments block");
+
+                while (!IsMatch(TokenTypes.Separator, ")"))
+                {
+                    if (IsMatch(TokenTypes.Identifier))
+                        Arguments.Add(Identifier());
+                    else if (IsMatch(TokenTypes.Literal))
+                        Arguments.Add(Literal());
+
+                    if (!IsMatch(TokenTypes.Separator, ",") && Peek().Value != ")")
+                        throw new Exception("Argument format issue");
+                }
+
+                FunctionCall func = new FunctionCall(identifier.Name, Arguments);
+
+                if (Peek().Value != "&&" && IsMatch(TokenTypes.Operator))
+                {
+                    ExpressionStack.Push(func);
+                    return Operator();
+                }
+
+                return func;
+            }
+
+            if (Peek().Value != "&&" && IsMatch(TokenTypes.Operator))
+            {
+                ExpressionStack.Push(identifier);
+                return Operator();
+            }
+
+            return identifier;
+        }
+
+        public string[] Parse()
+        {
+            List<Expression> expressions = new List<Expression>();
+
+            while (!IsOutOfRange())
+            {
+                var result = Expression();
+                if (result != null)
+                {
+                    expressions.Add(result);
+                }
+
+                if (current == _tokens.Count)
+                    break;
+
+                ExpressionStack.Clear();
+            }
+
+            List<string> Code = new List<string>();
+            foreach(Expression e in expressions)
+            {
+                e.GenerateCode(CompilationMeta, Code);
+            }
+
+            CompilationMeta.GenerateData(Code);
+
+            foreach (var line in Code)
+            {
+                Console.WriteLine(line);
+            }
+            return Code.ToArray();
         }
 
         bool CheckType(TokenTypes type) => _tokens[current].TokenType == type;
         bool IsMatch(TokenTypes type) {
             if (current >= _tokens.Count) return false;
             if (_tokens[current].TokenType == type)
+            {
+                Advance();
+                return true;
+            }
+
+            return false;
+        }
+
+        bool IsMatch(TokenTypes type, string value)
+        {
+            if (current >= _tokens.Count) return false;
+            if (_tokens[current].TokenType == type && _tokens[current].Value == value)
+            {
+                Advance();
+                return true;
+            }
+
+            return false;
+        }
+
+        bool IsLineEnd()
+        {
+            if (current >= _tokens.Count) return true;
+            if (_tokens[current].Value == ";" || _tokens[current].Value == "\n")
             {
                 Advance();
                 return true;
@@ -474,19 +421,19 @@ namespace Lexer
             return Previous();
         }
 
-        Token Previous(int Offset = 1)
+        Token Previous()
         {
-            return _tokens[current - Offset];
+            return _tokens[current - 1];
         }
 
-        Token Peek(int Offset = 0)
+        Token Peek()
         {
-            return _tokens[current + Offset]; 
+            return _tokens[current]; 
         }
 
-        Token PeekAhead(int index)
+        Token PeekAhead(int Offset)
         {
-            return _tokens[current + index];
+            return _tokens[current + Offset];
         }
 
     }
