@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
+using System.Net;
 
 namespace mips
 {
@@ -273,26 +274,16 @@ namespace mips
             int ParameterPosition = Int32.Parse(RegisterValue);
             string[] parts = FullLine[ParameterPosition].Split(new char[] { '(', ')' }, StringSplitOptions.RemoveEmptyEntries);
 
-            int address = -1;
-            int offset = -1;
-
-            if (!int.TryParse(parts[0], out address))
+            if (LabelPositions.ContainsKey(parts[1]))
             {
-                if (!LabelPositions.TryGetValue(parts[0], out address))
-                {
-                    address = Owner.Memory[Owner.GetRegisterAddress(parts[0])];
-                }
+                return LabelPositions[parts[1]];
             }
 
-            if (!int.TryParse(parts[1], out offset))
-            {
-                if (!LabelPositions.TryGetValue(parts[1], out offset))
-                {
-                    offset = Owner.Memory[Owner.GetRegisterAddress(parts[1])];
-                }
-            }
+            int registerIndex = Computer.InstructionRegisterDefinitions.ToList().IndexOf(parts[1]);
+            if (registerIndex != -1)
+                return registerIndex;
 
-            return address + offset;
+            return int.Parse(parts[1]);
         }
 
         int ReadCalculatedOuter(string[] FullLine, string RegisterValue, int Length)
@@ -305,7 +296,11 @@ namespace mips
                 return LabelPositions[parts[0]];
             }
 
-            return Computer.InstructionRegisterDefinitions.ToList().IndexOf(parts[0]);
+            int registerIndex = Computer.InstructionRegisterDefinitions.ToList().IndexOf(parts[0]);
+            if (registerIndex != -1)
+                return registerIndex;
+
+            return int.Parse(parts[0]);
         }
 
         int ReadImmediate(string[] FullLine, string ImmediateValue, int Length)

@@ -1,7 +1,80 @@
-﻿using System.Xml.Linq;
+﻿using System.Linq.Expressions;
+using System.Xml.Linq;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Lexer.AST
 {
+    public class FunctionCallRegisterState
+    {
+        bool[] aRegisters = new bool[4];
+        bool[] tRegisters = new bool[8];
+        int spaceSum = 3;
+
+        public FunctionCallRegisterState(FunctionCall SubFunction, CompilationMeta MetaScope)
+        {
+
+            for (int i = 0; i < SubFunction.Arguments.Count; i++)
+            {
+                aRegisters[i] = true;
+                spaceSum++;
+            }
+
+            for (int i = 0; i < 8; i++)
+            {
+                if (!MetaScope.TempRegisters[i])
+                    continue;
+
+                tRegisters[i] = true;
+                spaceSum++;
+            }
+        }
+
+        public void SaveState(List<string> Code)
+        {
+            int backwardsCount = spaceSum;
+            Code.Add($"Ori $t9, $zero, {backwardsCount}");
+            Code.Add($"Sub $sp, $sp, $t9");
+            for (int i = 0; i < 4; i++)
+            {
+                if (aRegisters[i])
+                    Code.Add($"SB $a{i}, $sp({backwardsCount--})");
+            }
+
+            for (int i = 0; i < 8; i++)
+            {
+                if (tRegisters[i])
+                    Code.Add($"SB $t{i}, $sp({backwardsCount--})");
+            }
+
+            Code.Add($"SB $v0, $sp({backwardsCount--})");
+            Code.Add($"SB $v1, $sp({backwardsCount--})");
+            Code.Add($"SB $ra, $sp({backwardsCount--})");
+        }
+
+        public void LoadState(List<string> Code)
+        {
+            int count = spaceSum;
+            for (int i = 0; i < 4; i++)
+            {
+                if (aRegisters[i])
+                    Code.Add($"LB $a{i}, $sp({count--})");
+            }
+
+            for (int i = 0; i < 8; i++)
+            {
+                if (tRegisters[i])
+                    Code.Add($"LB $t{i}, $sp({count--})");
+            }
+
+            Code.Add($"LB $v0, $sp({count--})");
+            Code.Add($"LB $v1, $sp({count--})");
+            Code.Add($"LB $ra, $sp({count--})");
+
+            Code.Add($"Ori $t9, $zero, {spaceSum}");
+            Code.Add($"Add $sp, $sp, $t9");
+        }
+    }
+
     public class RegisterResult
     {
         public string Register { get; private set; }
@@ -188,7 +261,12 @@ namespace Lexer.AST
             for (int i = 0; i < ArgumentRegisters.Length; i++)
                 Code.Add($"Move $a{i}, {ArgumentRegisters[i].ToString()}");
 
+            FunctionCallRegisterState registerState = new FunctionCallRegisterState(this, ScopeMeta);
+            registerState.SaveState(Code);
+
             Code.Add($"Jal {FunctionName}");
+
+            registerState.LoadState(Code);
 
             foreach (var register in ArgumentRegisters)
             {

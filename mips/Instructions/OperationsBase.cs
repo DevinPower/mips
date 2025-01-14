@@ -64,9 +64,6 @@
 
         protected InputInstruction[] GetRtCalculatedOffsetRs()
         {
-            Console.WriteLine("TODO: Check GetRtCalculatedOffsetRs for potential " +
-                "duplicate parameter position");
-
             return new[] {
                 new InputInstruction(InputInstruction.InstructionType.ReadStatic, GetOpCode(), 6),
                 new InputInstruction(InputInstruction.InstructionType.CalculatedInner, "2", 5),
