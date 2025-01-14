@@ -8,7 +8,7 @@ namespace Lexer.AST
     {
         bool[] aRegisters = new bool[4];
         bool[] tRegisters = new bool[8];
-        int spaceSum = 3;
+        int spaceSum = 1;
 
         public FunctionCallRegisterState(FunctionCall SubFunction, CompilationMeta MetaScope)
         {
@@ -37,18 +37,18 @@ namespace Lexer.AST
             for (int i = 0; i < 4; i++)
             {
                 if (aRegisters[i])
-                    Code.Add($"SB $a{i}, $sp({backwardsCount--})");
+                    Code.Add($"SB $a{i}, {backwardsCount--}($sp)");
             }
 
             for (int i = 0; i < 8; i++)
             {
                 if (tRegisters[i])
-                    Code.Add($"SB $t{i}, $sp({backwardsCount--})");
+                    Code.Add($"SB $t{i}, {backwardsCount--}($sp)");
             }
 
-            Code.Add($"SB $v0, $sp({backwardsCount--})");
-            Code.Add($"SB $v1, $sp({backwardsCount--})");
-            Code.Add($"SB $ra, $sp({backwardsCount--})");
+            //Code.Add($"SB $v0, $sp({backwardsCount--})");
+            //Code.Add($"SB $v1, $sp({backwardsCount--})");
+            Code.Add($"SB $ra, {backwardsCount--}($sp)");
         }
 
         public void LoadState(List<string> Code)
@@ -57,18 +57,18 @@ namespace Lexer.AST
             for (int i = 0; i < 4; i++)
             {
                 if (aRegisters[i])
-                    Code.Add($"LB $a{i}, $sp({count--})");
+                    Code.Add($"LB $a{i}, {count--}($sp)");
             }
 
             for (int i = 0; i < 8; i++)
             {
                 if (tRegisters[i])
-                    Code.Add($"LB $t{i}, $sp({count--})");
+                    Code.Add($"LB $t{i}, {count--}($sp)");
             }
 
-            Code.Add($"LB $v0, $sp({count--})");
-            Code.Add($"LB $v1, $sp({count--})");
-            Code.Add($"LB $ra, $sp({count--})");
+            //Code.Add($"LB $v0, $sp({count--})");
+            //Code.Add($"LB $v1, $sp({count--})");
+            Code.Add($"LB $ra, {count--}($sp)");
 
             Code.Add($"Ori $t9, $zero, {spaceSum}");
             Code.Add($"Add $sp, $sp, $t9");
@@ -273,7 +273,10 @@ namespace Lexer.AST
                 ScopeMeta.FreeTempRegister(register);
             }
 
-            return new RegisterResult("v0");
+            RegisterResult resultRegister = new RegisterResult($"t{ScopeMeta.GetTempRegister()}");
+            Code.Add($"Move {resultRegister}, $v0");
+
+            return resultRegister;
         }
     }
 

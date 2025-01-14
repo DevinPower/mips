@@ -66,13 +66,19 @@ namespace Lexer
             if (literal == null)
                 throw new Exception($"Literal value type unknown '{literalValue}'");
 
-            if (IsMatch(TokenTypes.Operator))
+            if (Peek().Value != "&&" && IsMatch(TokenTypes.Operator))
             {
                 ExpressionStack.Push(literal);
-                var result = Operator();
-                ExpressionStack.Push(result);
-                return result;
+                return Operator();
             }
+
+            //if (IsMatch(TokenTypes.Operator))
+            //{
+            //    ExpressionStack.Push(literal);
+            //    var result = Operator();
+            //    ExpressionStack.Push(result);
+            //    return result;
+            //}
 
             return literal;
         }
@@ -315,7 +321,15 @@ namespace Lexer
                         throw new Exception("Argument format issue");
                 }
 
-                return new FunctionCall(identifier.Name, Arguments);
+                FunctionCall func = new FunctionCall(identifier.Name, Arguments);
+
+                if (Peek().Value != "&&" && IsMatch(TokenTypes.Operator))
+                {
+                    ExpressionStack.Push(func);
+                    return Operator();
+                }
+
+                return func;
             }
 
             if (Peek().Value != "&&" && IsMatch(TokenTypes.Operator))
