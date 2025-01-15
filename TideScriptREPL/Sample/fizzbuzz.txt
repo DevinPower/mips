@@ -1,0 +1,60 @@
+string newLine = "
+";
+
+string prompt = "Enter the target length";
+
+function print(string Pointer){
+    |Ori, $v0, $zero, 4
+    |Syscall
+}
+
+function printChar(int Value){
+     |Ori, $v0, $zero, 4
+     |Syscall
+}
+
+function printNumber(string PrintNum){
+    |Ori, $v0, $zero, 1
+    |Syscall
+}
+
+function mod(int Number, int Quotient){
+     int Divisions = Number / Quotient;
+     int Multiples = Quotient * Divisions;
+     return Number - Multiples;
+}
+
+function readInt(){
+     |Ori, $v0, $zero, 5
+     |Syscall
+}
+
+int num = 1;
+print(prompt);
+printChar(newLine);
+int upper = readInt();
+
+while (num < upper + 1){
+     int fiveResult = mod(num, 5);
+     int threeResult = mod(num, 3);
+
+     if (0 == fiveResult){
+          if (0 == threeResult){
+               print("fizzbuzz");
+               printChar(newLine);
+          }else{
+               print("buzz");
+               printChar(newLine);
+          }
+     }else{
+          if (0 == threeResult){
+               print("fizz");
+               printChar(newLine);
+          }else{
+               printNumber(num);
+               printChar(newLine);
+          }
+     }
+
+     num += 1;
+}

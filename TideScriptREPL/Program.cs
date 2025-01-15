@@ -29,7 +29,8 @@ namespace TideScriptREPL
             }
             else
             {
-                throw new NotImplementedException("Does not support passing in args yet");
+                ContentsDefault = File.ReadLines(args[0]).ToArray();
+                Interactive(ContentsDefault);
             }
         }
 
