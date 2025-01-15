@@ -66,7 +66,7 @@ namespace Lexer
             if (literal == null)
                 throw new Exception($"Literal value type unknown '{literalValue}'");
 
-            if (Peek().Value != "&&" && IsMatch(TokenTypes.Operator))
+            if (!IsLogicOperator(Peek().Value) && IsMatch(TokenTypes.Operator))
             {
                 ExpressionStack.Push(literal);
                 return Operator();
@@ -184,8 +184,10 @@ namespace Lexer
                         while (!IsMatch(TokenTypes.Separator, ")"))
                         {
                             Expression condition = Expression();
-                            Conditions.Add(condition);
                             ExpressionStack.Push(condition);
+                            if (IsLogicOperator(Peek().Value))
+                                continue;
+                            Conditions.Add(condition);
                         }
                         
                         if (!IsMatch(TokenTypes.Separator, "{"))
@@ -299,6 +301,18 @@ namespace Lexer
             return null;
         }
 
+        bool IsLogicOperator(string Value)
+        {
+            switch (Value)
+            {
+                case "&&":
+                case "||":
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
         Expression Identifier()
         {
             Variable identifier = new Variable(Previous().Value);
@@ -323,7 +337,7 @@ namespace Lexer
 
                 FunctionCall func = new FunctionCall(identifier.Name, Arguments);
 
-                if (Peek().Value != "&&" && IsMatch(TokenTypes.Operator))
+                if (!IsLogicOperator(Peek().Value) && IsMatch(TokenTypes.Operator))
                 {
                     ExpressionStack.Push(func);
                     return Operator();
@@ -332,7 +346,7 @@ namespace Lexer
                 return func;
             }
 
-            if (Peek().Value != "&&" && IsMatch(TokenTypes.Operator))
+            if (!IsLogicOperator(Peek().Value) && IsMatch(TokenTypes.Operator))
             {
                 ExpressionStack.Push(identifier);
                 return Operator();

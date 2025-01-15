@@ -112,13 +112,13 @@ namespace Lexer
 
                 if (c == '|')
                 {
-                    //if (Contents[i + 1] != '|')
-                    //{
-                    //    LexedCode.Add(("||", TokenTypes.Operator, tokenStart, i + 1));
-                    //    CurrentToken = "";
-                    //    i += 2;
-                    //    continue;
-                    //}
+                    if (Contents[i + 1] ==  '|')
+                    {
+                        LexedCode.Add(("||", TokenTypes.Operator, tokenStart, i + 1));
+                        i++;
+                        CurrentToken = "";
+                        continue;
+                    }
 
                     i += 1;
                     string machineCode = "";
