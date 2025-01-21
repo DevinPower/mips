@@ -53,7 +53,11 @@ namespace Lexer
         {
             Literal literal = null;
             string literalValue = Previous().Value;
-            if (Int32.TryParse(literalValue, out int intLiteral))
+            if (literalValue.StartsWith("0x"))
+            {
+                literal = new IntLiteral(Conversions.HexToInt(literalValue));
+            }
+            else if (Int32.TryParse(literalValue, out int intLiteral))
             {
                 literal = new IntLiteral(intLiteral);
             }
@@ -71,14 +75,6 @@ namespace Lexer
                 ExpressionStack.Push(literal);
                 return Operator();
             }
-
-            //if (IsMatch(TokenTypes.Operator))
-            //{
-            //    ExpressionStack.Push(literal);
-            //    var result = Operator();
-            //    ExpressionStack.Push(result);
-            //    return result;
-            //}
 
             return literal;
         }

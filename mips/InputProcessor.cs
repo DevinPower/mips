@@ -34,7 +34,7 @@ namespace mips
         void InitializePseudoInstructions()
         {
             _pseudoInstructions = new Dictionary<string, Func<Match, string[]>>();
-            _pseudoInstructions.Add(@"Li\s+(\$\w+),\s*(\w+)", PI_li);
+            _pseudoInstructions.Add(@"Li\s+(\$\w+),\s*(-?\w+)", PI_li);
             _pseudoInstructions.Add(@"La\s+(\$\w+),\s*(\w+)", PI_la);
             _pseudoInstructions.Add(@"Move\s+(\$\w+),\s*(\$\w+)", PI_move);
         }

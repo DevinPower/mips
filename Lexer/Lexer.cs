@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
@@ -36,7 +37,7 @@ namespace Lexer
 
         readonly string[] Keywords = new[] {
             "if", "return", "while", "function", "else",
-            "int", "float", "double", "string", "char"
+            "int", "float", "string", "char"
         };
 
         readonly string[] Separators = new[] {
@@ -201,6 +202,9 @@ namespace Lexer
                 return TokenTypes.Separator;
 
             if (Int32.TryParse(Value, out int result))
+                return TokenTypes.Literal;
+
+            if (Value.StartsWith("0x") && Regex.IsMatch(Value.Substring(2), @"^[0-9a-fA-F]+$"))
                 return TokenTypes.Literal;
 
             return TokenTypes.Identifier;
