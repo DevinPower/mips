@@ -1,11 +1,4 @@
 ﻿using Lexer.AST;
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.IO.Pipes;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Lexer
 {
@@ -129,12 +122,46 @@ namespace Lexer
                 case "int":
                 case "string":
                 case "float":
-                case "double":
                 case "char":
-                    CompilationMeta.AddVariable(Peek().Value, Previous().Value);
-                    var result = Expression();
-                    ExpressionStack.Push(result);
-                    return result;
+                    {
+                        string Name = Peek().Value;
+                        string Type = Previous().Value;
+                        Expression result = null;
+
+                        if (IsMatch(TokenTypes.Separator, "["))
+                        {
+                            if (IsMatch(TokenTypes.Literal))
+                            {
+                                Literal size = (Literal)Literal();
+                                if (size is IntLiteral intSize)
+                                {
+                                    if (!IsMatch(TokenTypes.Separator, "]"))
+                                        throw new Exception("Expected array close ']'");
+
+                                    Console.WriteLine($"Array of size {intSize.Value}");
+
+                                    Name = Peek().Value;
+                                    CompilationMeta.AddVariableArray(Name, Type, intSize.Value);
+                                    result = Expression();
+                                    ExpressionStack.Push(result);
+                                    return result;
+                                }
+                                else
+                                {
+                                    throw new Exception($"Expected array size, got '{size.ToString()}'");
+                                }
+                            }
+                            else
+                            {
+                                throw new Exception("Expected int literal for array");
+                            }
+                        }
+
+                        CompilationMeta.AddVariable(Name, Type);
+                        result = Expression();
+                        ExpressionStack.Push(result);
+                        return result;
+                    }
                 case "function":
                     {
                         string FunctionName = Peek().Value;
@@ -205,14 +232,23 @@ namespace Lexer
                     {
                         if (!IsMatch(TokenTypes.Separator, "("))
                             throw new Exception("Expected condition");
-                        Expression condition = Expression();
-                        if (!IsMatch(TokenTypes.Separator, ")"))
-                            throw new Exception("Expected condition close");
+
+                        List<Expression> Conditions = new List<Expression>();
+
+                        while (!IsMatch(TokenTypes.Separator, ")"))
+                        {
+                            Expression condition = Expression();
+                            ExpressionStack.Push(condition);
+                            if (IsLogicOperator(Peek().Value))
+                                continue;
+                            Conditions.Add(condition);
+                        }
+
                         if (!IsMatch(TokenTypes.Separator, "{"))
                             throw new Exception("Expected script block");
                         ScriptBlock body = (ScriptBlock)ScriptBlock(null);
 
-                        return new WhileLoop(condition, body);
+                        return new WhileLoop(Conditions, body);
                     }
             }
 
@@ -315,6 +351,38 @@ namespace Lexer
         Expression Identifier()
         {
             Variable identifier = new Variable(Previous().Value);
+
+            if (IsMatch(TokenTypes.Separator, "["))
+            {
+                if (IsMatch(TokenTypes.Literal))
+                {
+                    Literal offset = (Literal)Literal();
+                    if (offset is IntLiteral intOffset)
+                    {
+                        if (!IsMatch(TokenTypes.Separator, "]"))
+                            throw new Exception("Expected array close ']'");
+
+                        identifier.SetOffset(intOffset);
+                    }
+                    else
+                    {
+                        throw new Exception($"Expected array offset, got '{offset.ToString()}'");
+                    }
+                }
+                else if (IsMatch(TokenTypes.Identifier))
+                {
+                    Expression offset = Identifier();
+                    if (!IsMatch(TokenTypes.Separator, "]"))
+                        throw new Exception("Expected array close ']'");
+
+                    identifier.SetOffset(offset);
+                }
+                else
+                {
+                    throw new Exception("Expected int literal for array");
+                }
+            }
+
             var FunctionData = CompilationMeta.GetFunction(identifier.Name);
 
             if (FunctionData != null)

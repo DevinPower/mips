@@ -6,6 +6,7 @@ namespace Lexer
     {
         public string Name { get; set; }
         public string Type { get; set; }
+        public int ArraySize { get; set; } = 1;
 
         public VariableMeta(string Name, string Type)
         {
@@ -13,14 +14,23 @@ namespace Lexer
             this.Type = Type;
         }
 
+        public VariableMeta(string Name, string Type, int ArraySize)
+        {
+            this.Name = Name;
+            this.Type = Type;
+            this.ArraySize = ArraySize;
+        }
+
         string HandleType()
         {
             switch (Type)
             {
                 case "int":
-                    return $".word 1";
+                    return $".word {ArraySize}";
+                case "float":
+                    return $".word {ArraySize}";
                 case "string":
-                    return $".word 1";
+                    return $".word {ArraySize}";
             }
 
             throw new Exception($";error generating data for Type {Type} on variable {Name}");
@@ -86,6 +96,11 @@ namespace Lexer
         public void AddVariable(string Variable, string Type)
         {
             Variables.Add(new VariableMeta(Variable, Type));
+        }
+
+        public void AddVariableArray(string Variable, string Type, int Size)
+        {
+            Variables.Add(new VariableMeta(Variable, Type, Size));
         }
 
         public void AddArgument(string Name, string Type)

@@ -156,8 +156,11 @@ namespace mips
                     case "word":
                         if (Int32.TryParse(LineRemainder.Trim(), out int result))
                         {
-                            addressPointer++;
-                            Owner.StoreMemory(result);
+                            for (int i = 0; i < result; i++)
+                            {
+                                addressPointer++;
+                                Owner.StoreMemory(0);
+                            }
                         }
                         else
                         {

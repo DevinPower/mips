@@ -192,12 +192,12 @@ namespace Lexer.AST
 
     public class WhileLoop : Expression
     {
-        public Expression Condition { get; private set; }
+        public List<Expression> Conditions { get; private set; }
         public ScriptBlock Body { get; private set; }
 
-        public WhileLoop(Expression Condition, ScriptBlock Body)
+        public WhileLoop(List<Expression> Conditions, ScriptBlock Body)
         {
-            this.Condition = Condition;
+            this.Conditions = Conditions;
             this.Body = Body;
         }
 
@@ -207,9 +207,16 @@ namespace Lexer.AST
             string EndGuid = System.Guid.NewGuid().ToString().Replace("-", "");
 
             Code.Add($"{StartGuid}:");
-            var conditionRegister = Condition.GenerateCode(ScopeMeta, Code);
+            List<RegisterResult> conditionRegisters = new List<RegisterResult>();
 
-            Code.Add($"Beq $zero, {conditionRegister}, {EndGuid}");
+            foreach (var Condition in Conditions)
+            {
+                conditionRegisters.Add(Condition.GenerateCode(ScopeMeta, Code));
+            }
+
+            foreach (var conditionRegister in conditionRegisters)
+                Code.Add($"Beq $zero, {conditionRegister}, {EndGuid}");
+
             var resultRegister = Body.GenerateCode(ScopeMeta, Code);
             Code.Add($"J {StartGuid}");
             Code.Add($"{EndGuid}:");
@@ -223,9 +230,21 @@ namespace Lexer.AST
     public class Variable : Expression
     {
         public string Name { get; private set; }
+        public Expression Offset { get; private set; }
+
         public Variable(string Name)
         {
             this.Name = Name;
+        }
+
+        public RegisterResult GetOffsetRegister(CompilationMeta ScopeMeta, List<string> Code)
+        {
+            return Offset.GenerateCode(ScopeMeta, Code);
+        }
+
+        public void SetOffset(Expression Offset)
+        {
+            this.Offset = Offset;
         }
 
         public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
@@ -234,7 +253,17 @@ namespace Lexer.AST
             if (ArgumentPosition == -1) 
             {
                 RegisterResult ResultRegister = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
-                Code.Add($"LB {ResultRegister}, {Name}(0)");
+
+                string offsetRegister = "$zero";
+
+                if (Offset != null)
+                {
+                    RegisterResult offsetResult = Offset.GenerateCode(ScopeMeta, Code);
+                    offsetRegister = offsetResult.ToString();
+                    ScopeMeta.FreeTempRegister(offsetResult);
+                }
+
+                Code.Add($"LB {ResultRegister}, {Name}({offsetRegister})");
                 return ResultRegister;
             }
             else
@@ -397,7 +426,16 @@ namespace Lexer.AST
         {
             RegisterResult LeftRegister = RHS.GenerateCode(ScopeMeta, Code);
 
-            Code.Add($"SB {LeftRegister}, {Variable.Name}(0)");
+            string offsetRegister = "$zero";
+
+            if (Variable.Offset != null)
+            {
+                RegisterResult offsetResult = Variable.Offset.GenerateCode(ScopeMeta, Code);
+                offsetRegister = offsetResult.ToString();
+                ScopeMeta.FreeTempRegister(offsetResult);
+            }
+
+            Code.Add($"SB {LeftRegister}, {Variable.Name}({offsetRegister})");
 
             ScopeMeta.FreeTempRegister(LeftRegister);
 
