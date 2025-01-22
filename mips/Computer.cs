@@ -24,9 +24,9 @@ public class Computer
         "$s0", "$s1", "$s2", "$s3", "$s4", "$s5", "$s6", "$s7",
         "$t8", "$t9",
         "$k0", "$k1",
-        "$gp",
         "$sp",
         "$fp",
+        "$at",
         "$ra"
     };
 
@@ -381,12 +381,13 @@ public class Computer
 
     void Print_Char()
     {
-        throw new NotImplementedException();
+        int memoryPointer = Memory[GetRegisterAddress("$a0")];
+        Console.Write((char)Memory[memoryPointer]);
     }
 
     void Read_Char()
     {
-        throw new NotImplementedException();
+        Memory[GetRegisterAddress("$v0")] = Console.ReadLine()[0];
     }
 
     void Exit2()

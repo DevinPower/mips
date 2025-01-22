@@ -122,6 +122,36 @@ namespace Lexer
             return Matches.First();
         }
 
+        public VariableMeta? GetVariable(string Name)
+        {
+            var Matches = Variables.Where((x) => x.Name == Name).ToList();
+            if (Matches.Count() != 1)
+            {
+                if (_Parent == null)
+                    return null;
+                else
+                    return _Parent.GetVariable(Name);
+            }
+
+            return Matches.First();
+        }
+
+        public VariableMeta? GetArgument(string Name, bool CanRecurse)
+        {
+            var Matches = Arguments.Where((x) => x != null && x.Name == Name).ToList();
+            if (Matches.Count() != 1)
+            {
+                if (_Parent == null)
+                    return null;
+                else if (CanRecurse)
+                    return _Parent.GetArgument(Name, CanRecurse);
+                else
+                    return null;
+            }
+
+            return Matches.First();
+        }
+
         public void AddVariable(string Variable, string Type)
         {
             Variables.Add(new VariableMeta(Variable, Type));
@@ -145,12 +175,17 @@ namespace Lexer
             throw new Exception("Too many arguments exception");
         }
 
-        public int GetArgumentPosition(string Name)
+        public int GetArgumentPosition(string Name, bool CanRecurse)
         {
             for (int i = 0; i < Arguments.Length; i++)
             {
                 if (Arguments[i] == null)
-                    return -1;
+                {
+                    if (!CanRecurse || _Parent == null)
+                        return -1;
+                    
+                    return _Parent.GetArgumentPosition(Name, CanRecurse);
+                }
 
                 if (Arguments[i].Name == Name)
                     return i;

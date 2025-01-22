@@ -41,6 +41,18 @@ namespace mips
 
         string[] PI_li(Match RegexResults)
         {
+            if (Int32.TryParse(RegexResults.Groups[2].Value, out int result) && Math.Abs(result) > 65535)
+            {
+                string hexValue = result.ToString("X");
+                hexValue = hexValue.PadLeft(8, '0');
+
+                int upper16 = Convert.ToInt32(hexValue.Substring(0, 4), 16);
+                int lower16 = Convert.ToInt32(hexValue.Substring(4, 4), 16);
+
+                return new string[] {  $"Lui $at, {upper16}",
+                    $"Ori {RegexResults.Groups[1].Value}, $at, {lower16}" };
+            }
+
             return new string[] { $"Ori {RegexResults.Groups[1].Value}, $zero, {RegexResults.Groups[2].Value}" };
         }
 

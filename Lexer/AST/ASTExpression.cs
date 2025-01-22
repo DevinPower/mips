@@ -249,25 +249,66 @@ namespace Lexer.AST
 
         public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
         {
-            int ArgumentPosition = ScopeMeta.GetArgumentPosition(Name);
+            int ArgumentPosition = ScopeMeta.GetArgumentPosition(Name, true);
             if (ArgumentPosition == -1) 
             {
                 RegisterResult ResultRegister = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
 
                 string offsetRegister = "$zero";
+                RegisterResult offsetResult = null;
 
                 if (Offset != null)
                 {
-                    RegisterResult offsetResult = Offset.GenerateCode(ScopeMeta, Code);
+                    offsetResult = Offset.GenerateCode(ScopeMeta, Code);
                     offsetRegister = offsetResult.ToString();
-                    ScopeMeta.FreeTempRegister(offsetResult);
+
+                    if (ScopeMeta.GetVariable(Name).Type == "string")
+                    {
+                        RegisterResult StringAddress = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
+
+                        Code.Add($"LB {StringAddress}, {Name}($zero)");
+                        Code.Add($"Add {StringAddress}, {StringAddress}, {offsetRegister}");
+                        Code.Add($"LB {ResultRegister}, 0({StringAddress})");
+
+                        ScopeMeta.FreeTempRegister(offsetResult);
+                        ScopeMeta.FreeTempRegister(StringAddress);
+                        return ResultRegister;
+                    }
                 }
+
+                ScopeMeta.FreeTempRegister(offsetResult);
 
                 Code.Add($"LB {ResultRegister}, {Name}({offsetRegister})");
                 return ResultRegister;
             }
             else
             {
+                if (Offset != null)
+                {
+                    RegisterResult offsetResult = Offset.GenerateCode(ScopeMeta, Code);
+                    RegisterResult resultRegister = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
+
+                    if (ScopeMeta.GetArgument(Name, true).Type == "string")
+                    {
+                        RegisterResult ResultRegister = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
+                        RegisterResult StringAddress = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
+
+                        Code.Add($"Move {StringAddress}, $a{ArgumentPosition}");
+                        Code.Add($"Add {StringAddress}, {StringAddress}, {offsetResult}");
+                        Code.Add($"LB {ResultRegister}, 0({StringAddress})");
+
+                        ScopeMeta.FreeTempRegister(offsetResult);
+                        ScopeMeta.FreeTempRegister(StringAddress);
+                        return ResultRegister;
+                    }
+
+                    Code.Add($"Add {resultRegister}, $a{ArgumentPosition}, {offsetResult}");
+
+                    ScopeMeta.FreeTempRegister(offsetResult);
+
+                    return resultRegister;
+                }
+
                 return new RegisterResult($"a{ArgumentPosition}");
             }
         }
@@ -287,11 +328,11 @@ namespace Lexer.AST
         {
             RegisterResult[] ArgumentRegisters = Arguments.Select((x) => x.GenerateCode(ScopeMeta, Code)).ToArray();
 
-            for (int i = 0; i < ArgumentRegisters.Length; i++)
-                Code.Add($"Move $a{i}, {ArgumentRegisters[i].ToString()}");
-
             FunctionCallRegisterState registerState = new FunctionCallRegisterState(this, ScopeMeta);
             registerState.SaveState(Code);
+
+            for (int i = 0; i < ArgumentRegisters.Length; i++)
+                Code.Add($"Move $a{i}, {ArgumentRegisters[i].ToString()}");
 
             Code.Add($"Jal {FunctionName}");
 
@@ -384,7 +425,7 @@ namespace Lexer.AST
                 $"Mult {Result}, {Op1}, {Op2}", $"Div {Result}, {Op1}, {Op2}",
                 $"Slt {Result}, {Op1}, {Op2}", $"Slt {Result}, {Op2}, {Op1}",
                 $"Seq {Result}, {Op1}, {Op2}", $"Add {Op1}, {Op1}, {Op2}",
-                $"Sub {Op1}, {Op1}, {Op2}", $"Mul {Op1}, {Op1}, {Op2}",
+                $"Sub {Op1}, {Op1}, {Op2}", $"Mult {Op1}, {Op1}, {Op2}",
                 $"Div {Op1}, {Op1}, {Op2}",
                 $"Or {Result}, {Op1}, {Op2}", $"And {Result}, {Op1}, {Op2}"}[(int)Type];
         }
