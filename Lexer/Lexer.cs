@@ -9,7 +9,7 @@ using System.Xml.Linq;
 
 namespace Lexer
 {
-    public enum TokenTypes { Error, Nothing, Operator, Identifier, Keyword, Separator, Literal, Comment, MachineCode }
+    public enum TokenTypes { Error, Nothing, Operator, Identifier, Keyword, Separator, Literal, Comment, MachineCode, Include }
     public class Token
     {
         public TokenTypes TokenType { get; private set; }
@@ -59,6 +59,28 @@ namespace Lexer
             {
                 char c = Contents[i];
                 int tokenStart = i;
+
+                if (c == '#')
+                {
+                    if (Contents.Substring(i + 1, 7).Trim() == "include")
+                    {
+                        int start = i;
+                        i += 8;
+
+                        string includeFile = ForDraw ? "#include" : "";
+                        while (i < Contents.Length && Contents[i] != '\n')
+                        {
+                            includeFile += Contents[i++];
+                        }
+
+                        if (Contents[i] == '\n')
+                            i--;
+
+                        LexedCode.Add((includeFile.Trim(), TokenTypes.Include, start, i));
+                        CurrentToken = "";
+                        continue;
+                    }
+                }
 
                 if (c == '/' && Contents[i + 1] == '/')
                 {

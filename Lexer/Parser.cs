@@ -7,42 +7,55 @@ namespace Lexer
         List<Token> _tokens;
         int current = 0;
         Stack<Expression> ExpressionStack = new Stack<Expression>();
-        CompilationMeta CompilationMeta;
 
         public Parser(List<Token> Tokens)
         {
             _tokens = Tokens.Where((x) => x.TokenType != TokenTypes.Nothing).ToList();
-            CompilationMeta = new CompilationMeta(null);
         }
 
-        Expression Expression()
+        Expression Expression(CompilationMeta CompilationMeta)
         {
             if (IsMatch(TokenTypes.Literal))
-                return Literal();
+                return Literal(CompilationMeta);
             if (IsMatch(TokenTypes.Identifier))
-                return Identifier();
+                return Identifier(CompilationMeta);
             if (IsMatch(TokenTypes.Keyword))
-                return KeyWord();
+                return KeyWord(CompilationMeta);
             if (IsMatch(TokenTypes.MachineCode)) 
-                return MachineCode();
+                return MachineCode(CompilationMeta);
             if (IsMatch(TokenTypes.Separator, "{"))
-                return ScriptBlock(null);
+                return ScriptBlock(CompilationMeta, null);
             if (IsLineEnd())
                 return null;
             if (IsMatch(TokenTypes.Comment))
                 return null;
+            if (IsMatch(TokenTypes.Include))
+                return AddInclude(CompilationMeta);
             if (ExpressionStack.Count > 0 && IsMatch(TokenTypes.Operator))
-                return Operator();
+                return Operator(CompilationMeta);
 
             return null;
         }
 
-        Expression MachineCode()
+        ScriptBlock AddInclude(CompilationMeta CompilationMeta)
+        {
+            string Contents = string.Join("\n", File.ReadAllLines(Previous().Value));
+            Lexer lexer = new Lexer();
+
+            Parser parser = new Parser(lexer.Lexicate(Contents, false, false));
+            var includeResults = parser.ParseCompilationMeta();
+
+            CompilationMeta.MergeExternal(includeResults.Item1);
+            List<AST.Expression> expressions = includeResults.Item2;
+            return new ScriptBlock(expressions, CompilationMeta);
+        }
+
+        Expression MachineCode(CompilationMeta CompilationMeta)
         {
             return new MachineCode(Previous().Value);
         }
 
-        Expression Literal()
+        Expression Literal(CompilationMeta CompilationMeta)
         {
             Literal literal = null;
             string literalValue = Previous().Value;
@@ -66,18 +79,18 @@ namespace Lexer
             if (!IsLogicOperator(Peek().Value) && IsMatch(TokenTypes.Operator))
             {
                 ExpressionStack.Push(literal);
-                return Operator();
+                return Operator(CompilationMeta);
             }
 
             return literal;
         }
 
-        Expression ScriptBlock(CompilationMeta subScope)
+        Expression ScriptBlock(CompilationMeta CompilationMeta, CompilationMeta subScope)
         {
             List<Expression> expressions = new List<AST.Expression>();
             while (!IsMatch(TokenTypes.Separator, "}"))
             {
-                var result = Expression();
+                var result = Expression(subScope);
                 if (result != null)
                 {
                     expressions.Add(result);
@@ -115,7 +128,7 @@ namespace Lexer
             return Arguments;
         }
 
-        Expression KeyWord()
+        Expression KeyWord(CompilationMeta CompilationMeta)
         {
             switch (Previous().Value)
             {
@@ -132,7 +145,7 @@ namespace Lexer
                         {
                             if (IsMatch(TokenTypes.Literal))
                             {
-                                Literal size = (Literal)Literal();
+                                Literal size = (Literal)Literal(CompilationMeta);
                                 if (size is IntLiteral intSize)
                                 {
                                     if (!IsMatch(TokenTypes.Separator, "]"))
@@ -142,7 +155,7 @@ namespace Lexer
 
                                     Name = Peek().Value;
                                     CompilationMeta.AddVariableArray(Name, Type, intSize.Value);
-                                    result = Expression();
+                                    result = Expression(CompilationMeta);
                                     ExpressionStack.Push(result);
                                     return result;
                                 }
@@ -158,7 +171,7 @@ namespace Lexer
                         }
 
                         CompilationMeta.AddVariable(Name, Type);
-                        result = Expression();
+                        result = Expression(CompilationMeta);
                         ExpressionStack.Push(result);
                         return result;
                     }
@@ -172,7 +185,7 @@ namespace Lexer
                             throw new Exception("Expected script block");
 
                         CompilationMeta subScope = CompilationMeta.AddSubScope();
-                        Expression block = ScriptBlock(subScope);
+                        Expression block = ScriptBlock(CompilationMeta, subScope);
 
                         CompilationMeta.AddFunction(FunctionName, "void");
                         foreach (var argument in Arguments)
@@ -187,9 +200,9 @@ namespace Lexer
                         Expression returnExpression = null;
 
                         if (IsMatch(TokenTypes.Identifier))
-                            returnExpression = Identifier();
+                            returnExpression = Identifier(CompilationMeta);
                         else if (IsMatch(TokenTypes.Literal))
-                            returnExpression = Literal();
+                            returnExpression = Literal(CompilationMeta);
                         //TODO: Support function calls
 
                         if (returnExpression == null)
@@ -206,7 +219,7 @@ namespace Lexer
 
                         while (!IsMatch(TokenTypes.Separator, ")"))
                         {
-                            Expression condition = Expression();
+                            Expression condition = Expression(CompilationMeta);
                             ExpressionStack.Push(condition);
                             if (IsLogicOperator(Peek().Value))
                                 continue;
@@ -215,15 +228,19 @@ namespace Lexer
                         
                         if (!IsMatch(TokenTypes.Separator, "{"))
                             throw new Exception("Expected script block");
-                        ScriptBlock body = (ScriptBlock)ScriptBlock(null);
+
+                        CompilationMeta subScope = CompilationMeta.AddSubScope();
+
+                        ScriptBlock body = (ScriptBlock)ScriptBlock(CompilationMeta, subScope);
 
                         ScriptBlock ElseBody = null;
 
                         if (IsMatch(TokenTypes.Keyword, "else"))
                         {
+                            CompilationMeta elseScope = CompilationMeta.AddSubScope();
                             if (!IsMatch(TokenTypes.Separator, "{"))
                                 throw new Exception("Expected script block");
-                            ElseBody = (ScriptBlock)ScriptBlock(null);
+                            ElseBody = (ScriptBlock)ScriptBlock(CompilationMeta, elseScope);
                         }
 
                         return new Conditional(Conditions, body, ElseBody);
@@ -237,7 +254,7 @@ namespace Lexer
 
                         while (!IsMatch(TokenTypes.Separator, ")"))
                         {
-                            Expression condition = Expression();
+                            Expression condition = Expression(CompilationMeta);
                             ExpressionStack.Push(condition);
                             if (IsLogicOperator(Peek().Value))
                                 continue;
@@ -246,7 +263,10 @@ namespace Lexer
 
                         if (!IsMatch(TokenTypes.Separator, "{"))
                             throw new Exception("Expected script block");
-                        ScriptBlock body = (ScriptBlock)ScriptBlock(null);
+
+                        CompilationMeta subScope = CompilationMeta.AddSubScope();
+
+                        ScriptBlock body = (ScriptBlock)ScriptBlock(CompilationMeta, subScope);
 
                         return new WhileLoop(Conditions, body);
                     }
@@ -304,28 +324,28 @@ namespace Lexer
             return false;
         }
 
-        Expression Operator()
+        Expression Operator(CompilationMeta CompilationMeta)
         {
             OperatorTypes type = GetOperatorType(Previous().Value);
             bool SelfAssign = IsSelfAssign(Previous().Value);
 
             if (type == OperatorTypes.ASSIGN)
             {
-                var result = new Assignment((Variable)ExpressionStack.Pop(), Expression());
+                var result = new Assignment((Variable)ExpressionStack.Pop(), Expression(CompilationMeta));
                 ExpressionStack.Push(result);
                 return result;
             }
 
             if (IsMatch(TokenTypes.Literal))
             {
-                var result = new Operator(ExpressionStack.Pop(), type, Literal(), SelfAssign);
+                var result = new Operator(ExpressionStack.Pop(), type, Literal(CompilationMeta), SelfAssign);
                 ExpressionStack.Push(result);
                 return result;
             }
 
             if (IsMatch(TokenTypes.Identifier))
             {
-                var result = new Operator(ExpressionStack.Pop(), type, Identifier(), SelfAssign);
+                var result = new Operator(ExpressionStack.Pop(), type, Identifier(CompilationMeta), SelfAssign);
                 ExpressionStack.Push(result);
                 return result;
             }
@@ -348,7 +368,7 @@ namespace Lexer
             }
         }
 
-        Expression Identifier()
+        Expression Identifier(CompilationMeta CompilationMeta)
         {
             Variable identifier = new Variable(Previous().Value);
 
@@ -356,7 +376,7 @@ namespace Lexer
             {
                 if (IsMatch(TokenTypes.Literal))
                 {
-                    Literal offset = (Literal)Literal();
+                    Literal offset = (Literal)Literal(CompilationMeta);
                     if (offset is IntLiteral intOffset)
                     {
                         if (!IsMatch(TokenTypes.Separator, "]"))
@@ -371,7 +391,7 @@ namespace Lexer
                 }
                 else if (IsMatch(TokenTypes.Identifier))
                 {
-                    Expression offset = Identifier();
+                    Expression offset = Identifier(CompilationMeta);
                     if (!IsMatch(TokenTypes.Separator, "]"))
                         throw new Exception("Expected array close ']'");
 
@@ -394,9 +414,9 @@ namespace Lexer
                 while (!IsMatch(TokenTypes.Separator, ")"))
                 {
                     if (IsMatch(TokenTypes.Identifier))
-                        Arguments.Add(Identifier());
+                        Arguments.Add(Identifier(CompilationMeta));
                     else if (IsMatch(TokenTypes.Literal))
-                        Arguments.Add(Literal());
+                        Arguments.Add(Literal(CompilationMeta));
 
                     if (!IsMatch(TokenTypes.Separator, ",") && Peek().Value != ")")
                         throw new Exception("Argument format issue");
@@ -407,16 +427,21 @@ namespace Lexer
                 if (!IsLogicOperator(Peek().Value) && IsMatch(TokenTypes.Operator))
                 {
                     ExpressionStack.Push(func);
-                    return Operator();
+                    return Operator(CompilationMeta);
                 }
 
                 return func;
             }
 
+            if (IsMatch(TokenTypes.Separator, "("))
+            {
+                throw new Exception($"Unknown function '{identifier.Name}'");
+            }
+
             if (!IsLogicOperator(Peek().Value) && IsMatch(TokenTypes.Operator))
             {
                 ExpressionStack.Push(identifier);
-                return Operator();
+                return Operator(CompilationMeta);
             }
 
             return identifier;
@@ -424,24 +449,12 @@ namespace Lexer
 
         public string[] Parse()
         {
-            List<Expression> expressions = new List<Expression>();
-
-            while (!IsOutOfRange())
-            {
-                var result = Expression();
-                if (result != null)
-                {
-                    expressions.Add(result);
-                }
-
-                if (current == _tokens.Count)
-                    break;
-
-                ExpressionStack.Clear();
-            }
+            var results = ParseCompilationMeta();
+            var CompilationMeta = results.Item1;
+            var expressions = results.Item2;
 
             List<string> Code = new List<string>();
-            foreach(Expression e in expressions)
+            foreach (Expression e in expressions)
             {
                 e.GenerateCode(CompilationMeta, Code);
             }
@@ -453,6 +466,28 @@ namespace Lexer
                 Console.WriteLine(line);
             }
             return Code.ToArray();
+        }
+
+        public (CompilationMeta, List<Expression>) ParseCompilationMeta()
+        {
+            List<Expression> expressions = new List<Expression>();
+            CompilationMeta CompilationMeta = new CompilationMeta(null);
+
+            while (!IsOutOfRange())
+            {
+                var result = Expression(CompilationMeta);
+                if (result != null)
+                {
+                    expressions.Add(result);
+                }
+
+                if (current == _tokens.Count)
+                    break;
+
+                ExpressionStack.Clear();
+            }
+
+            return (CompilationMeta, expressions);
         }
 
         bool CheckType(TokenTypes type) => _tokens[current].TokenType == type;

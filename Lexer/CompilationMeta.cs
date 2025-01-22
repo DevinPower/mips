@@ -57,17 +57,42 @@ namespace Lexer
 
     public class CompilationMeta
     {
-        CompilationMeta _Parent;
-        List<VariableMeta> Variables = new List<VariableMeta>();
-        List<FunctionMeta> Functions = new List<FunctionMeta>();
-        Dictionary<string, string> StringData = new Dictionary<string, string>();
+        protected List<string> Includes = new List<string>();
+        protected CompilationMeta _Parent;
+        protected List<VariableMeta> Variables = new List<VariableMeta>();
+        protected List<FunctionMeta> Functions = new List<FunctionMeta>();
+        protected Dictionary<string, string> StringData = new Dictionary<string, string>();
         public bool[] TempRegisters = new bool[8];
-        List<CompilationMeta> _childScopes = new List<CompilationMeta>();
-        VariableMeta[] Arguments = new VariableMeta[4];
+        protected List<CompilationMeta> _childScopes = new List<CompilationMeta>();
+        protected VariableMeta[] Arguments = new VariableMeta[4];
 
         public CompilationMeta(CompilationMeta Parent)
         {
             _Parent = Parent;
+        }
+
+        public void MergeExternal(CompilationMeta ExternalMeta)
+        {
+            Variables.AddRange(ExternalMeta.Variables);
+            Functions.AddRange(ExternalMeta.Functions);
+            _childScopes.AddRange(ExternalMeta._childScopes);
+            foreach (var key in ExternalMeta.StringData.Keys)
+            {
+                StringData.Add(key, ExternalMeta.StringData[key]);
+            }
+        }
+
+        public List<string> GetIncludedFiles()
+        {
+            return Includes;
+        }
+
+        public void AddInclude(string FileName)
+        {
+            if (_Parent != null)
+                throw new Exception($"Include for '{FileName}' added outside of parent scope.");
+
+            Includes.Add(FileName);
         }
 
         public CompilationMeta AddSubScope()
@@ -76,7 +101,6 @@ namespace Lexer
             _childScopes.Add(newScope);
 
             return newScope;
-
         }
 
         public void AddFunction(string Name, string ReturnType)
@@ -88,7 +112,12 @@ namespace Lexer
         {
             var Matches = Functions.Where((x) => x.Name == Name);
             if (Matches.Count() != 1)
-                return null;
+            {
+                if (_Parent == null)
+                    return null;
+                else
+                    return _Parent.GetFunction(Name);
+            }
 
             return Matches.First();
         }
@@ -153,20 +182,35 @@ namespace Lexer
 
         public void GenerateData(List<string> Code)
         {
-            int InserCount = 0;
-            Code.Insert(InserCount++, ".data");
+            int InsertCount = 0;
+            Code.Insert(InsertCount++, ".data");
 
-            foreach(VariableMeta variable in Variables)
+            GenerateVariableCode(Code, ref InsertCount);
+            GenerateStringConstantCode(Code, ref InsertCount);
+
+            Code.Insert(InsertCount++, ".main");
+        }
+
+        protected void GenerateVariableCode(List<string> Code, ref int InsertCount)
+        {
+            foreach (VariableMeta variable in Variables)
             {
-                Code.Insert(InserCount++, variable.GenerateData());
+                Code.Insert(InsertCount++, variable.GenerateData());
             }
 
-            foreach(string key in StringData.Keys)
+            foreach(var child in _childScopes)
+                child.GenerateVariableCode(Code, ref InsertCount);
+        }
+
+        protected void GenerateStringConstantCode(List<string> Code, ref int InsertCount)
+        {
+            foreach (string key in StringData.Keys)
             {
-                Code.Insert(InserCount++, $"{key}: .asciiz \"{StringData[key]}\"");
+                Code.Insert(InsertCount++, $"{key}: .asciiz \"{StringData[key]}\"");
             }
 
-            Code.Insert(InserCount++, ".main");
+            foreach (var child in _childScopes)
+                child.GenerateStringConstantCode(Code, ref InsertCount);
         }
 
         public void FreeTempRegister(RegisterResult Register)
@@ -179,8 +223,6 @@ namespace Lexer
                 int registerIndex = int.Parse(Register.Register.Replace("t", ""));
                 TempRegisters[registerIndex] = false;
             }
-
-            //TempRegisters[Index] = false;
         }
     }
 }

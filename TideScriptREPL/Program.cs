@@ -306,6 +306,8 @@ namespace TideScriptREPL
                             return ConsoleColor.Red;
                         case TokenTypes.MachineCode: 
                             return ConsoleColor.Cyan;
+                        case TokenTypes.Include:
+                            return ConsoleColor.Magenta;
                         default:
                             return ConsoleColor.White;
                     }
