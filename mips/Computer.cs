@@ -37,7 +37,7 @@ public class Computer
     public Computer(int MemorySize, int HeapSize)
     {
         Memory = new int[MemorySize];
-        _heapPointer = HeapSize + 33;
+        _heapPointer = HeapSize + 34;
         _programCounter = _heapPointer + 3;
 
         InitializeRegisters(_heapPointer + 3);
@@ -381,8 +381,7 @@ public class Computer
 
     void Print_Char()
     {
-        int memoryPointer = Memory[GetRegisterAddress("$a0")];
-        Console.Write((char)Memory[memoryPointer]);
+        Console.Write((char)Memory[GetRegisterAddress("$a0")]);
     }
 
     void Read_Char()

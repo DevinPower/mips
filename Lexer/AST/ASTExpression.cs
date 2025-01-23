@@ -254,7 +254,7 @@ namespace Lexer.AST
             {
                 RegisterResult ResultRegister = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
 
-                string offsetRegister = "$zero";
+                string offsetRegister = "0";
                 RegisterResult offsetResult = null;
 
                 if (Offset != null)
@@ -266,7 +266,7 @@ namespace Lexer.AST
                     {
                         RegisterResult StringAddress = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
 
-                        Code.Add($"LB {StringAddress}, {Name}($zero)");
+                        Code.Add($"LB {StringAddress}, {Name}(0)");
                         Code.Add($"Add {StringAddress}, {StringAddress}, {offsetRegister}");
                         Code.Add($"LB {ResultRegister}, 0({StringAddress})");
 
@@ -467,7 +467,7 @@ namespace Lexer.AST
         {
             RegisterResult LeftRegister = RHS.GenerateCode(ScopeMeta, Code);
 
-            string offsetRegister = "$zero";
+            string offsetRegister = "0";
 
             if (Variable.Offset != null)
             {

@@ -13,8 +13,8 @@ namespace mips
     {
         List<SoftOperationWrapper> AllOperations;
         Computer Owner;
-        int addressPointer = 32;
-        int initialAddressPointer = 33;
+        int addressPointer = 33;
+        int initialAddressPointer = 34;
         Dictionary<string, int> LabelPositions = new Dictionary<string, int>();
         List<int> ValidCommandLines = new List<int>();
         int WriteCommandLine = 0;

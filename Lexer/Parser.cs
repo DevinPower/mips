@@ -184,7 +184,7 @@ namespace Lexer
                         if (!IsMatch(TokenTypes.Separator, "{"))
                             throw new Exception("Expected script block");
 
-                        CompilationMeta subScope = CompilationMeta.AddSubScope();
+                        CompilationMeta subScope = CompilationMeta.AddSubScope(false);
                         Expression block = ScriptBlock(CompilationMeta, subScope);
 
                         CompilationMeta.AddFunction(FunctionName, "void");
@@ -229,7 +229,7 @@ namespace Lexer
                         if (!IsMatch(TokenTypes.Separator, "{"))
                             throw new Exception("Expected script block");
 
-                        CompilationMeta subScope = CompilationMeta.AddSubScope();
+                        CompilationMeta subScope = CompilationMeta.AddSubScope(true);
 
                         ScriptBlock body = (ScriptBlock)ScriptBlock(CompilationMeta, subScope);
 
@@ -237,7 +237,7 @@ namespace Lexer
 
                         if (IsMatch(TokenTypes.Keyword, "else"))
                         {
-                            CompilationMeta elseScope = CompilationMeta.AddSubScope();
+                            CompilationMeta elseScope = CompilationMeta.AddSubScope(true);
                             if (!IsMatch(TokenTypes.Separator, "{"))
                                 throw new Exception("Expected script block");
                             ElseBody = (ScriptBlock)ScriptBlock(CompilationMeta, elseScope);
@@ -264,7 +264,7 @@ namespace Lexer
                         if (!IsMatch(TokenTypes.Separator, "{"))
                             throw new Exception("Expected script block");
 
-                        CompilationMeta subScope = CompilationMeta.AddSubScope();
+                        CompilationMeta subScope = CompilationMeta.AddSubScope(true);
 
                         ScriptBlock body = (ScriptBlock)ScriptBlock(CompilationMeta, subScope);
 
@@ -471,7 +471,7 @@ namespace Lexer
         public (CompilationMeta, List<Expression>) ParseCompilationMeta()
         {
             List<Expression> expressions = new List<Expression>();
-            CompilationMeta CompilationMeta = new CompilationMeta(null);
+            CompilationMeta CompilationMeta = new CompilationMeta(null, false);
 
             while (!IsOutOfRange())
             {

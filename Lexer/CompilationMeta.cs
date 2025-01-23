@@ -66,9 +66,16 @@ namespace Lexer
         protected List<CompilationMeta> _childScopes = new List<CompilationMeta>();
         protected VariableMeta[] Arguments = new VariableMeta[4];
 
-        public CompilationMeta(CompilationMeta Parent)
+        public CompilationMeta(CompilationMeta Parent, bool CopyTempRegisters)
         {
             _Parent = Parent;
+            if (CopyTempRegisters)
+            {
+                for (int i = 0; i < 8; i++)
+                {
+                    TempRegisters[i] = _Parent.TempRegisters[i];
+                }
+            }
         }
 
         public void MergeExternal(CompilationMeta ExternalMeta)
@@ -95,9 +102,9 @@ namespace Lexer
             Includes.Add(FileName);
         }
 
-        public CompilationMeta AddSubScope()
+        public CompilationMeta AddSubScope(bool CopyRegisters)
         {
-            CompilationMeta newScope = new CompilationMeta(this);
+            CompilationMeta newScope = new CompilationMeta(this, CopyRegisters);
             _childScopes.Add(newScope);
 
             return newScope;
