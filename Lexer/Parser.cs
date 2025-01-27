@@ -184,6 +184,8 @@ namespace Lexer
                         Advance();
                         List<(string type, string name, bool isArray)> Arguments = GetArguments();
 
+                        ConsumeWhitespaceAndComments();
+
                         if (!IsMatch(TokenTypes.Separator, "{"))
                             throw new Exception("Expected script block");
 
@@ -215,38 +217,7 @@ namespace Lexer
                     }
                 case "if":
                     {
-                        if (!IsMatch(TokenTypes.Separator, "("))
-                            throw new Exception("Expected condition");
-
-                        List<Expression> Conditions = new List<Expression>();
-
-                        while (!IsMatch(TokenTypes.Separator, ")"))
-                        {
-                            Expression condition = Expression(CompilationMeta);
-                            ExpressionStack.Push(condition);
-                            if (IsLogicOperator(Peek().Value))
-                                continue;
-                            Conditions.Add(condition);
-                        }
-                        
-                        if (!IsMatch(TokenTypes.Separator, "{"))
-                            throw new Exception("Expected script block");
-
-                        CompilationMeta subScope = CompilationMeta.AddSubScope(true);
-
-                        ScriptBlock body = (ScriptBlock)ScriptBlock(CompilationMeta, subScope);
-
-                        ScriptBlock ElseBody = null;
-
-                        if (IsMatch(TokenTypes.Keyword, "else"))
-                        {
-                            CompilationMeta elseScope = CompilationMeta.AddSubScope(true);
-                            if (!IsMatch(TokenTypes.Separator, "{"))
-                                throw new Exception("Expected script block");
-                            ElseBody = (ScriptBlock)ScriptBlock(CompilationMeta, elseScope);
-                        }
-
-                        return new Conditional(Conditions, body, ElseBody);
+                        return Conditional(CompilationMeta);
                     }
                 case "while":
                     {
@@ -264,6 +235,8 @@ namespace Lexer
                             Conditions.Add(condition);
                         }
 
+                        ConsumeWhitespaceAndComments();
+
                         if (!IsMatch(TokenTypes.Separator, "{"))
                             throw new Exception("Expected script block");
 
@@ -276,6 +249,68 @@ namespace Lexer
             }
 
             return null;
+        }
+
+        private Expression Conditional(CompilationMeta CompilationMeta)
+        {
+            if (!IsMatch(TokenTypes.Separator, "("))
+                throw new Exception("Expected condition");
+
+            List<Expression> Conditions = new List<Expression>();
+
+            while (!IsMatch(TokenTypes.Separator, ")"))
+            {
+                Expression condition = Expression(CompilationMeta);
+                ExpressionStack.Push(condition);
+                if (IsLogicOperator(Peek().Value))
+                    continue;
+                Conditions.Add(condition);
+            }
+
+            ConsumeWhitespaceAndComments();
+
+            if (!IsMatch(TokenTypes.Separator, "{"))
+                throw new Exception("Expected script block");
+
+            CompilationMeta subScope = CompilationMeta.AddSubScope(true);
+
+            ScriptBlock body = (ScriptBlock)ScriptBlock(CompilationMeta, subScope);
+
+            ScriptBlock ElseBody = null;
+
+            ConsumeWhitespaceAndComments();
+
+            Conditional ElseIfBody = null;
+
+            if (IsMatch(TokenTypes.Keyword, "elseif"))
+            {
+                ElseIfBody = (Conditional)Conditional(CompilationMeta);
+            }
+
+            if (IsMatch(TokenTypes.Keyword, "else"))
+            {
+                ConsumeWhitespaceAndComments();
+
+                CompilationMeta elseScope = CompilationMeta.AddSubScope(true);
+                if (!IsMatch(TokenTypes.Separator, "{"))
+                    throw new Exception("Expected script block");
+                ElseBody = (ScriptBlock)ScriptBlock(CompilationMeta, elseScope);
+            }
+
+            return new Conditional(Conditions, body, ElseBody, ElseIfBody);
+        }
+
+        void ConsumeWhitespaceAndComments()
+        {
+            while (true)
+            {
+                if (IsMatch(TokenTypes.Separator, "\n"))
+                    continue;
+                if (IsMatch(TokenTypes.Comment, " "))
+                    continue;
+
+                break;
+            }
         }
 
         OperatorTypes GetOperatorType(string Operator)

@@ -29,7 +29,7 @@ namespace Lexer
         };
 
         readonly string[] Keywords = new[] {
-            "if", "return", "while", "function", "else",
+            "if", "return", "while", "function", "else", "elseif",
             "int", "float", "string", "char"
         };
 
@@ -198,7 +198,7 @@ namespace Lexer
         {
             foreach(var Token in Tokens)
             {
-                Console.WriteLine($"{Token.Item1.PadRight(70)}{Token.Item2}");
+                Console.WriteLine($"'{Token.Item1}'{"".PadRight(70)}{Token.Item2}");
             }
         }
 

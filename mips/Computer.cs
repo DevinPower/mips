@@ -51,7 +51,7 @@ public class Computer
             SBRK, Exit,
             Print_Char, Read_Char,
             Sys_Null, Sys_Null, Sys_Null, Sys_Null,
-            Exit2
+            Exit2, Get_Time
         };
     }
 
@@ -335,6 +335,11 @@ public class Computer
             }
             value.Append((char)CurrentChar);
         }
+    }
+
+    void Get_Time()
+    {
+        Memory[GetRegisterAddress("$v0")] = (int)DateTime.Now.TimeOfDay.TotalSeconds;
     }
 
     void Read_Int()

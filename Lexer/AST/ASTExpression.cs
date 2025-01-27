@@ -145,12 +145,14 @@ namespace Lexer.AST
         public List<Expression> Conditions { get; private set; }
         public ScriptBlock Body { get; private set; }
         public ScriptBlock ElseBody { get; private set; }
+        public Conditional ElseIf { get; private set; }
 
-        public Conditional(List<Expression> Conditions, ScriptBlock Body, ScriptBlock ElseBody)
+        public Conditional(List<Expression> Conditions, ScriptBlock Body, ScriptBlock ElseBody, Conditional ElseIf)
         {
             this.Conditions = Conditions;
             this.Body = Body;
             this.ElseBody = ElseBody;
+            this.ElseIf = ElseIf;
         }
 
         public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
@@ -168,7 +170,7 @@ namespace Lexer.AST
                 Code.Add($"Beq $zero, {conditionRegister}, {EndGuid}");
 
             var resultRegister = Body.GenerateCode(ScopeMeta, Code);
-            if (ElseBody != null)
+            if (ElseBody != null || ElseIf != null)
                 Code.Add($"J {EndElseGuid}");
             
             Code.Add($"{EndGuid}:");
@@ -179,6 +181,12 @@ namespace Lexer.AST
             {
                 resultRegister = ElseBody.GenerateCode(ScopeMeta, Code);
             }
+
+            if (ElseIf != null)
+            {
+                resultRegister = ElseIf.GenerateCode(ScopeMeta, Code);
+            }
+
             Code.Add($"{EndElseGuid}:");
 
             foreach (var conditionRegister in conditionRegisters)

@@ -82,7 +82,7 @@ namespace TideScriptREPL
                                 Console.ReadKey();
                             }
 
-                            Computer c = new Computer(512, 64);
+                            Computer c = new Computer(1024, 64);
                             c.Compile(ic);
 
                             if (Key.Modifiers != ConsoleModifiers.Control)
