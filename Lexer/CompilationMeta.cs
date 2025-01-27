@@ -169,13 +169,13 @@ namespace Lexer
             Variables.Add(new VariableMeta(Variable, Type, Size));
         }
 
-        public void AddArgument(string Name, string Type)
+        public void AddArgument(string Name, string Type, bool IsArray)
         {
             for(int i = 0; i < Arguments.Length; i++)
             {
                 if (Arguments[i] == null)
                 {
-                    Arguments[i] = new VariableMeta(Name, Type);
+                    Arguments[i] = new VariableMeta(Name, Type, IsArray ? 2 : 0);
                     return;
                 }
             }

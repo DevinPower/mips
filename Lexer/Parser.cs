@@ -106,9 +106,9 @@ namespace Lexer
             return new ScriptBlock(expressions, subScope);
         }
 
-        List<(string, string)> GetArguments()
+        List<(string, string, bool)> GetArguments()
         {
-            List<(string, string)> Arguments = new List<(string, string)> ();
+            List<(string, string, bool)> Arguments = new List<(string, string, bool)> ();
             if (!IsMatch(TokenTypes.Separator, "("))
                 throw new Exception("Expected arguments....");
 
@@ -116,13 +116,16 @@ namespace Lexer
             {
                 string type = Peek().Value;
                 Advance();
+
+                bool isArray = IsMatch(TokenTypes.Separator, "[") && IsMatch(TokenTypes.Separator, "]");
+
                 string name = Peek().Value;
                 Advance();
 
                 if (!IsMatch(TokenTypes.Separator, ",") && Peek().Value != ")")
                     throw new Exception("Argument format issue");
 
-                Arguments.Add((type, name));
+                Arguments.Add((type, name, isArray));
             }
 
             return Arguments;
@@ -179,7 +182,7 @@ namespace Lexer
                     {
                         string FunctionName = Peek().Value;
                         Advance();
-                        List<(string type, string name)> Arguments = GetArguments();
+                        List<(string type, string name, bool isArray)> Arguments = GetArguments();
 
                         if (!IsMatch(TokenTypes.Separator, "{"))
                             throw new Exception("Expected script block");
@@ -190,7 +193,7 @@ namespace Lexer
                         CompilationMeta.AddFunction(FunctionName, "void");
                         foreach (var argument in Arguments)
                         {
-                            subScope.AddArgument(argument.name, argument.type);
+                            subScope.AddArgument(argument.name, argument.type, argument.isArray);
                         }
 
                         return new FunctionDefinition(FunctionName, (ScriptBlock)block);
@@ -442,6 +445,11 @@ namespace Lexer
             {
                 ExpressionStack.Push(identifier);
                 return Operator(CompilationMeta);
+            }
+
+            if (CompilationMeta.GetVariable(identifier.Name) != null && !identifier.HasOffset() && CompilationMeta.GetVariable(identifier.Name)?.ArraySize != 1)
+            {
+                return new AddressPointer(identifier.Name);
             }
 
             return identifier;

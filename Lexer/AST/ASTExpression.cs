@@ -227,6 +227,25 @@ namespace Lexer.AST
         }
     }
 
+    public class AddressPointer : Expression
+    {
+        public string Name { get; private set; }
+
+        public AddressPointer(string Name)
+        {
+            this.Name = Name;
+        }
+
+        public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
+        {
+            RegisterResult ResultRegister = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
+
+            Code.Add($"La {ResultRegister}, {Name}(0); address pointer instruction");
+
+            return ResultRegister;
+        }
+    }
+
     public class Variable : Expression
     {
         public string Name { get; private set; }
@@ -235,6 +254,11 @@ namespace Lexer.AST
         public Variable(string Name)
         {
             this.Name = Name;
+        }
+
+        public bool HasOffset()
+        {
+            return Offset != null;
         }
 
         public RegisterResult GetOffsetRegister(CompilationMeta ScopeMeta, List<string> Code)
@@ -247,9 +271,21 @@ namespace Lexer.AST
             this.Offset = Offset;
         }
 
+        bool VariableIsArrayOrString(CompilationMeta ScopeMeta, string VariableName)
+        {
+            return ScopeMeta.GetVariable(Name).Type == "string" || ScopeMeta.GetVariable(Name).ArraySize != 1;
+        }
+
+        bool ArgumentIsArrayOrString(CompilationMeta ScopeMeta, string VariableName, bool CanRecurse)
+        {
+            return ScopeMeta.GetArgument(Name, CanRecurse).Type == "string" || ScopeMeta.GetArgument(Name, CanRecurse).ArraySize != 1;
+        }
+
+        //TODO: Can we refactor?
         public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
         {
             int ArgumentPosition = ScopeMeta.GetArgumentPosition(Name, true);
+
             if (ArgumentPosition == -1) 
             {
                 RegisterResult ResultRegister = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
@@ -262,7 +298,7 @@ namespace Lexer.AST
                     offsetResult = Offset.GenerateCode(ScopeMeta, Code);
                     offsetRegister = offsetResult.ToString();
 
-                    if (ScopeMeta.GetVariable(Name).Type == "string")
+                    if (VariableIsArrayOrString(ScopeMeta, Name))
                     {
                         RegisterResult StringAddress = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
 
@@ -288,7 +324,7 @@ namespace Lexer.AST
                     RegisterResult offsetResult = Offset.GenerateCode(ScopeMeta, Code);
                     RegisterResult resultRegister = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
 
-                    if (ScopeMeta.GetArgument(Name, true).Type == "string")
+                    if (ArgumentIsArrayOrString(ScopeMeta, Name, true))
                     {
                         RegisterResult ResultRegister = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
                         RegisterResult StringAddress = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
