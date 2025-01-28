@@ -467,6 +467,11 @@ namespace Lexer.AST
 
             return resultRegister;
         }
+
+        public override string InferType(CompilationMeta ScopeMeta)
+        {
+            return ScopeMeta.GetFunction(FunctionName).ReturnType;
+        }
     }
 
     public class FunctionDefinition : Expression

@@ -185,6 +185,8 @@ namespace Lexer
                     }
                 case "function":
                     {
+                        string ReturnType = Peek().Value;
+                        Advance();
                         string FunctionName = Peek().Value;
                         Advance();
                         List<(string type, string name, bool isArray)> Arguments = GetArguments();
