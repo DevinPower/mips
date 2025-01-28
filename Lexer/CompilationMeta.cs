@@ -47,11 +47,13 @@ namespace Lexer
     {
         public string Name { get; set; }
         public string ReturnType { get; set; }
+        public List<string> ArgumentTypes { get; set; }
 
-        public FunctionMeta(string Name, string ReturnType)
+        public FunctionMeta(string Name, string ReturnType, List<string> ArgumentTypes)
         {
             this.Name = Name;
             this.ReturnType = ReturnType;
+            this.ArgumentTypes = ArgumentTypes;
         }
     }
 
@@ -110,9 +112,9 @@ namespace Lexer
             return newScope;
         }
 
-        public void AddFunction(string Name, string ReturnType)
+        public void AddFunction(string Name, string ReturnType, List<string> ArgumentTypes)
         {
-            Functions.Add(new FunctionMeta(Name, ReturnType));
+            Functions.Add(new FunctionMeta(Name, ReturnType, ArgumentTypes));
         }
 
         public FunctionMeta? GetFunction(string Name)

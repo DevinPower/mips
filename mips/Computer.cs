@@ -235,6 +235,12 @@ public class Computer
         InstructionProcessors.Add(40, op10);
         InstructionProcessors.Add(2, op11);
         InstructionProcessors.Add(3, op12);
+
+        //Floating point operators
+        OP_111000 opf1 = new OP_111000();
+        opf1.LoadOperations();
+
+        InstructionProcessors.Add(56, opf1);
     }
 
     List<SoftOperationWrapper> GetAllInstructions()
@@ -312,7 +318,7 @@ public class Computer
 
     void Print_Float()
     {
-        throw new NotImplementedException();
+        Console.Write(HelperFunctions.IntToFloat(Memory[GetRegisterAddress("$a0")]));
     }
 
     void Print_Double()

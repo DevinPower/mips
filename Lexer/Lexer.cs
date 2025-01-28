@@ -219,6 +219,9 @@ namespace Lexer
             if (Int32.TryParse(Value, out int result))
                 return TokenTypes.Literal;
 
+            if (Value.Last() == 'f' && float.TryParse(Value.Substring(0, Value.Length - 1), out float floatResult))
+                return TokenTypes.Literal;
+
             if (Value.StartsWith("0x") && Regex.IsMatch(Value.Substring(2), @"^[0-9a-fA-F]+$"))
                 return TokenTypes.Literal;
 

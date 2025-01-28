@@ -26,5 +26,15 @@ namespace mips.Instructions
 
             return result;
         }
+
+        public static float IntToFloat(int Value)
+        {
+            return BitConverter.ToSingle(BitConverter.GetBytes(Value), 0);
+        }
+
+        public static int FloatToInt(float Value)
+        {
+            return BitConverter.ToInt32(BitConverter.GetBytes(Value), 0);
+        }
     }
 }

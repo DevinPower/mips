@@ -11,6 +11,7 @@
 
         public List<SoftOperationWrapper> GetOperations() { return Operations.Select((x) => x.GetSoftWrapper()).ToList(); }
 
+        //TODO: Div is reading a result register but doesnt need it
         public void LoadOperations()
         {
             Operations = new List<OperationWrapper<(Computer, int, int, int, int)>>();

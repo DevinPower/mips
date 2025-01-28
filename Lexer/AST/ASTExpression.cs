@@ -46,8 +46,6 @@ namespace Lexer.AST
                     Code.Add($"SB $t{i}, {backwardsCount--}($sp)");
             }
 
-            //Code.Add($"SB $v0, $sp({backwardsCount--})");
-            //Code.Add($"SB $v1, $sp({backwardsCount--})");
             Code.Add($"SB $ra, {backwardsCount--}($sp)");
         }
 
@@ -66,8 +64,6 @@ namespace Lexer.AST
                     Code.Add($"LB $t{i}, {count--}($sp)");
             }
 
-            //Code.Add($"LB $v0, $sp({count--})");
-            //Code.Add($"LB $v1, $sp({count--})");
             Code.Add($"LB $ra, {count--}($sp)");
 
             Code.Add($"Ori $t9, $zero, {spaceSum}");
@@ -93,6 +89,16 @@ namespace Lexer.AST
         {
             return $"${Register}";
         }
+
+        public void ConvertToInt(CompilationMeta ScopeMeta, List<string> Code)
+        {
+            Code.Add($"Cvt.i.s {ToString()}, {ToString()}, $zero");
+        }
+
+        public void ConvertToFloat(CompilationMeta ScopeMeta, List<string> Code)
+        {
+            Code.Add($"Cvt.s.i {ToString()}, {ToString()}, $zero");
+        }
     }
 
     public class Expression
@@ -100,6 +106,11 @@ namespace Lexer.AST
         public virtual RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
         {
             return null;
+        }
+
+        public virtual string InferType(CompilationMeta ScopeMeta)
+        {
+            return "unknown";
         }
     }
 
@@ -122,6 +133,32 @@ namespace Lexer.AST
             Code.Add($"Li {ResultRegister}, {Value}");
             return ResultRegister;
         }
+
+        public override string InferType(CompilationMeta ScopeMeta)
+        {
+            return "int";
+        }
+    }
+
+    public class FloatLiteral : Literal
+    {
+        public float Value { get; private set; }
+        public FloatLiteral(float Value)
+        {
+            this.Value = Value;
+        }
+
+        public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
+        {
+            RegisterResult ResultRegister = new RegisterResult($"t{ScopeMeta.GetTempRegister()}");
+            Code.Add($"Li {ResultRegister}, {Conversions.FloatToInt(Value)}");
+            return ResultRegister;
+        }
+
+        public override string InferType(CompilationMeta ScopeMeta)
+        {
+            return "float";
+        }
     }
 
     public class StringLiteral : Literal
@@ -137,6 +174,11 @@ namespace Lexer.AST
             RegisterResult ResultRegister = new RegisterResult($"t{ScopeMeta.GetTempRegister()}");
             Code.Add($"La {ResultRegister}, {Value}");
             return ResultRegister;
+        }
+
+        public override string InferType(CompilationMeta ScopeMeta)
+        {
+            return "int";
         }
     }
 
@@ -248,9 +290,14 @@ namespace Lexer.AST
         {
             RegisterResult ResultRegister = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
 
-            Code.Add($"La {ResultRegister}, {Name}(0); address pointer instruction");
+            Code.Add($"La {ResultRegister}, {Name}(0)");
 
             return ResultRegister;
+        }
+
+        public override string InferType(CompilationMeta ScopeMeta)
+        {
+            return "int";
         }
     }
 
@@ -272,6 +319,19 @@ namespace Lexer.AST
         public RegisterResult GetOffsetRegister(CompilationMeta ScopeMeta, List<string> Code)
         {
             return Offset.GenerateCode(ScopeMeta, Code);
+        }
+
+        public string GetVariableType(CompilationMeta ScopeMeta)
+        {
+            int ArgumentPosition = ScopeMeta.GetArgumentPosition(Name, true);
+            if (ArgumentPosition == -1)
+            {
+                return ScopeMeta.GetVariable(Name).Type;
+            }
+            else
+            {
+                return ScopeMeta.GetArgument(Name, true).Type;
+            }
         }
 
         public void SetOffset(Expression Offset)
@@ -356,6 +416,11 @@ namespace Lexer.AST
                 return new RegisterResult($"a{ArgumentPosition}");
             }
         }
+
+        public override string InferType(CompilationMeta ScopeMeta)
+        {
+            return GetVariableType(ScopeMeta);
+        }
     }
 
     public class FunctionCall : Expression
@@ -376,7 +441,17 @@ namespace Lexer.AST
             registerState.SaveState(Code);
 
             for (int i = 0; i < ArgumentRegisters.Length; i++)
+            {
+                string FunctionArgumentType = ScopeMeta.GetFunction(FunctionName).ArgumentTypes[i];
+
+                if (FunctionArgumentType == "float" && Arguments[i].InferType(ScopeMeta) == "int")
+                    ArgumentRegisters[i].ConvertToFloat(ScopeMeta, Code);
+
+                if (FunctionArgumentType == "int" && Arguments[i].InferType(ScopeMeta) == "float")
+                    ArgumentRegisters[i].ConvertToInt(ScopeMeta, Code);
+
                 Code.Add($"Move $a{i}, {ArgumentRegisters[i].ToString()}");
+            }
 
             Code.Add($"Jal {FunctionName}");
 
@@ -462,15 +537,16 @@ namespace Lexer.AST
             this.SelfAssign = SelfAssign;
         }
 
-        public string GetCommand(RegisterResult Result, RegisterResult Op1, RegisterResult Op2)
+        public string GetCommand(RegisterResult Result, RegisterResult Op1, RegisterResult Op2, bool Float)
         {
-            return new string[] { $";assignment",
-                $"Add {Result}, {Op1}, {Op2}", $"Sub {Result}, {Op1}, {Op2}",
-                $"Mult {Result}, {Op1}, {Op2}", $"Div {Result}, {Op1}, {Op2}",
-                $"Slt {Result}, {Op1}, {Op2}", $"Slt {Result}, {Op2}, {Op1}",
-                $"Seq {Result}, {Op1}, {Op2}", $"Add {Op1}, {Op1}, {Op2}",
-                $"Sub {Op1}, {Op1}, {Op2}", $"Mult {Op1}, {Op1}, {Op2}",
-                $"Div {Op1}, {Op1}, {Op2}",
+            string FloatCommand = Float ? ".s" : "";
+            return new string[] { $";assignment, this code shouldn't be called 😬",
+                $"Add{FloatCommand} {Result}, {Op1}, {Op2}", $"Sub{FloatCommand} {Result}, {Op1}, {Op2}",
+                $"Mult{FloatCommand} {Result}, {Op1}, {Op2}", $"Div{FloatCommand} {Result}, {Op1}, {Op2}",
+                $"Slt{FloatCommand} {Result}, {Op1}, {Op2}", $"Slt{FloatCommand} {Result}, {Op2}, {Op1}",
+                $"Seq {Result}, {Op1}, {Op2}", $"Add{FloatCommand} {Op1}, {Op1}, {Op2}",
+                $"Sub{FloatCommand} {Op1}, {Op1}, {Op2}", $"Mult{FloatCommand} {Op1}, {Op1}, {Op2}",
+                $"Div{FloatCommand} {Op1}, {Op1}, {Op2}",
                 $"Or {Result}, {Op1}, {Op2}", $"And {Result}, {Op1}, {Op2}"}[(int)Type];
         }
 
@@ -478,10 +554,29 @@ namespace Lexer.AST
         {
             var leftRegister = LHS.GenerateCode(ScopeMeta, Code);
             var rightRegister = RHS.GenerateCode(ScopeMeta, Code);
+            bool asfloat = false;
+
+            //TODO: Refactor
+            if (LHS.InferType(ScopeMeta) == "float" && RHS.InferType(ScopeMeta) == "int")
+            {
+                rightRegister.ConvertToFloat(ScopeMeta, Code);
+                asfloat = true;
+            }
+
+            if (LHS.InferType(ScopeMeta) == "int" && RHS.InferType(ScopeMeta) == "float")
+            {
+                leftRegister.ConvertToFloat(ScopeMeta, Code);
+                asfloat = true;
+            }
+
+            if (LHS.InferType(ScopeMeta) == "float" && RHS.InferType(ScopeMeta) == "float")
+            {
+                asfloat = true;
+            }
 
             RegisterResult resultRegister = new RegisterResult($"t{ScopeMeta.GetTempRegister()}");
 
-            Code.Add(GetCommand(resultRegister, leftRegister, rightRegister));
+            Code.Add(GetCommand(resultRegister, leftRegister, rightRegister, asfloat));
 
             if (SelfAssign)
                 Code.Add($"SB {leftRegister}, {((Variable)LHS).Name}(0)");
@@ -494,6 +589,14 @@ namespace Lexer.AST
             ScopeMeta.FreeTempRegister(rightRegister);
 
             return resultRegister;
+        }
+
+        public override string InferType(CompilationMeta ScopeMeta)
+        {
+            if (LHS.InferType(ScopeMeta) == "float" || RHS.InferType(ScopeMeta) == "float")
+                return "float";
+
+            return "int";
         }
     }
 
@@ -520,11 +623,22 @@ namespace Lexer.AST
                 ScopeMeta.FreeTempRegister(offsetResult);
             }
 
+            if (RHS.InferType(ScopeMeta) == "int" && Variable.InferType(ScopeMeta) == "float")
+                LeftRegister.ConvertToFloat(ScopeMeta, Code);
+
+            if (RHS.InferType(ScopeMeta) == "float" && Variable.InferType(ScopeMeta) == "int")
+                LeftRegister.ConvertToInt(ScopeMeta, Code);
+
             Code.Add($"SB {LeftRegister}, {Variable.Name}({offsetRegister})");
 
             ScopeMeta.FreeTempRegister(LeftRegister);
 
             return null;
+        }
+
+        public override string InferType(CompilationMeta ScopeMeta)
+        {
+            return Variable.InferType(ScopeMeta);
         }
     }
 

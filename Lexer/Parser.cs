@@ -63,6 +63,11 @@ namespace Lexer
             {
                 literal = new IntLiteral(Conversions.HexToInt(literalValue));
             }
+            else if (literalValue.EndsWith("f"))
+            {
+                float floatLiteral = float.Parse(literalValue.Substring(0, literalValue.Length - 1));
+                literal = new FloatLiteral(floatLiteral);
+            }
             else if (Int32.TryParse(literalValue, out int intLiteral))
             {
                 literal = new IntLiteral(intLiteral);
@@ -192,7 +197,7 @@ namespace Lexer
                         CompilationMeta subScope = CompilationMeta.AddSubScope(false);
                         Expression block = ScriptBlock(CompilationMeta, subScope);
 
-                        CompilationMeta.AddFunction(FunctionName, "void");
+                        CompilationMeta.AddFunction(FunctionName, "void", Arguments.Select((x) => x.type).ToList());
                         foreach (var argument in Arguments)
                         {
                             subScope.AddArgument(argument.name, argument.type, argument.isArray);
