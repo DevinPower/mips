@@ -507,6 +507,7 @@ namespace Lexer
             foreach (Expression e in expressions)
             {
                 e.GenerateCode(CompilationMeta, Code);
+                CompilationMeta.FreeAllUsedRegisters();
             }
 
             CompilationMeta.GenerateData(Code);

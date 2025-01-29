@@ -268,5 +268,13 @@ namespace Lexer
                 TempRegisters[registerIndex] = false;
             }
         }
+
+        public void FreeAllUsedRegisters()
+        {
+            for (int i = 0; i < TempRegisters.Length; i++)
+            {
+                TempRegisters[i] = false;
+            }
+        }
     }
 }
