@@ -68,6 +68,10 @@ namespace Lexer
                 float floatLiteral = float.Parse(literalValue.Substring(0, literalValue.Length - 1));
                 literal = new FloatLiteral(floatLiteral);
             }
+            else if (literalValue.StartsWith('\'') && literalValue.EndsWith('\''))
+            {
+                literal = new IntLiteral((int)literalValue[1]);
+            }
             else if (Int32.TryParse(literalValue, out int intLiteral))
             {
                 literal = new IntLiteral(intLiteral);
