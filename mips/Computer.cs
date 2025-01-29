@@ -262,21 +262,31 @@ public class Computer
         List<int> result = new List<int>();
         InputProcessor ip = new InputProcessor(this, ops, _programCounter);
 
-        foreach (string Line in Program)
+        for (int i = 0; i < Program.Length; i++)
         {
-            ip.FindLabels(ip.GetLineWithoutComments(Line));
+            string Line = Program[i];
+            ip.FindLabels(ip.GetLineWithoutComments(Line), i);
         }
 
         List<string> expandedProgram = new List<string>();
 
-        foreach (string Line in Program)
+        for (int i = 0; i < Program.Length; i++)
         {
-            expandedProgram.AddRange(ip.CheckPseudoInstructions(Line));
-        }
+            string Line = Program[i];
+            var lineResults = ip.CheckPseudoInstructions(Line);
 
+            int offset = lineResults.Length - 1;
+            if (offset > 0)
+            {
+                ip.BumpLabels(i, offset);
+            }
+
+            expandedProgram.AddRange(lineResults);
+        }
+        
         foreach (var peripheral in Peripherals)
         {
-            ip.AddLabel(peripheral.Name, peripheral.MemoryAddress);
+            //ip.AddLabel(peripheral.Name, peripheral.MemoryAddress);
         }
 
         foreach (string Line in expandedProgram)

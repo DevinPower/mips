@@ -9,13 +9,27 @@ using System.Net;
 
 namespace mips
 {
+    internal class LabelPositionWrapper
+    {
+        public int LineNumber { get; set; }
+        public string OriginalLine { get; private set; }
+        public int StaticLineIndex { get; private set; }
+
+        public LabelPositionWrapper(int LineNumber, string OriginalLine, int StaticLineIndex) 
+        {
+            this.LineNumber = LineNumber;
+            this.OriginalLine = OriginalLine;
+            this.StaticLineIndex = StaticLineIndex;
+        }
+    }
+
     internal class InputProcessor
     {
         List<SoftOperationWrapper> AllOperations;
         Computer Owner;
         int addressPointer = 33;
         int initialAddressPointer = 34;
-        Dictionary<string, int> LabelPositions = new Dictionary<string, int>();
+        Dictionary<string, LabelPositionWrapper> LabelPositions = new Dictionary<string, LabelPositionWrapper>();
         List<int> ValidCommandLines = new List<int>();
         int WriteCommandLine = 0;
 
@@ -58,7 +72,7 @@ namespace mips
 
         string[] PI_la(Match RegexResults)
         {
-            int addressLine = LabelPositions[RegexResults.Groups[2].Value];
+            int addressLine = LabelPositions[RegexResults.Groups[2].Value].LineNumber;
             return new string[] { $"Ori {RegexResults.Groups[1].Value}, $zero, {addressLine}" };
         }
 
@@ -105,7 +119,16 @@ namespace mips
             return new string[] { Line };
         }
 
-        public void FindLabels(string Line)
+        public void BumpLabels(int Index, int Amount)
+        {
+            foreach(string Key in LabelPositions.Keys)
+            {
+                if (LabelPositions[Key].StaticLineIndex >= Index)
+                    LabelPositions[Key].LineNumber += Amount;
+            }
+        }
+
+        public void FindLabels(string Line, int StaticLineCount)
         {
             string[] SplitLine = Line.Split(new[] { ' ', ',', '\t' }, StringSplitOptions.RemoveEmptyEntries);
 
@@ -117,13 +140,13 @@ namespace mips
                 string LabelName = SplitLine[0].Remove(SplitLine[0].Length - 1, 1);
                 if (SplitLine.Length == 1)
                 {
-                    LabelPositions.Add(LabelName, addressPointer);
+                    LabelPositions.Add(LabelName, new LabelPositionWrapper(addressPointer, Line, StaticLineCount));
                     return;
                 }
 
                 Line = Line.Substring(SplitLine[0].Length + 1, Line.Length - SplitLine[0].Length - 1);
                 SplitLine = Line.Split(new[] { ' ', ',', '\t' }, StringSplitOptions.RemoveEmptyEntries);
-                LabelPositions.Add(LabelName, addressPointer);
+                LabelPositions.Add(LabelName, new LabelPositionWrapper(addressPointer, Line, StaticLineCount));
             }
 
             if (SplitLine[0][0] == '.')
@@ -191,7 +214,8 @@ namespace mips
 
         public void AddLabel(string Name, int Index)
         {
-            LabelPositions.Add(Name, Index);
+            throw new NotImplementedException("Peripheral labelling not implemented");
+            //LabelPositions.Add(Name, Index);
         }
 
         public int ProcessLine(string Line)
@@ -271,7 +295,7 @@ namespace mips
 
             if (LabelPositions.ContainsKey(FullLine[ParameterPosition]))
             {
-                return LabelPositions[FullLine[ParameterPosition]];
+                return LabelPositions[FullLine[ParameterPosition]].LineNumber;
             }
 
             int result = Computer.InstructionRegisterDefinitions.ToList().IndexOf(FullLine[ParameterPosition]);
@@ -291,7 +315,7 @@ namespace mips
 
             if (LabelPositions.ContainsKey(parts[1]))
             {
-                return LabelPositions[parts[1]];
+                return LabelPositions[parts[1]].LineNumber;
             }
 
             int registerIndex = Computer.InstructionRegisterDefinitions.ToList().IndexOf(parts[1]);
@@ -308,7 +332,7 @@ namespace mips
 
             if (LabelPositions.ContainsKey(parts[0]))
             {
-                return LabelPositions[parts[0]];
+                return LabelPositions[parts[0]].LineNumber;
             }
 
             int registerIndex = Computer.InstructionRegisterDefinitions.ToList().IndexOf(parts[0]);
@@ -324,7 +348,7 @@ namespace mips
 
             if (LabelPositions.ContainsKey(FullLine[ParameterPosition]))
             {
-                return LabelPositions[FullLine[ParameterPosition]];
+                return LabelPositions[FullLine[ParameterPosition]].LineNumber;
             }
 
             return Convert.ToInt32(FullLine[ParameterPosition]);
