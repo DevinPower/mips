@@ -489,7 +489,7 @@ namespace Lexer
                 return Operator(CompilationMeta);
             }
 
-            if (CompilationMeta.GetVariable(identifier.Name) != null && !identifier.HasOffset() && CompilationMeta.GetVariable(identifier.Name)?.ArraySize != 1)
+            if (CompilationMeta.GetVariable(identifier.Name) != null && !identifier.HasOffset() && CompilationMeta.GetVariable(identifier.Name).IsArray)
             {
                 return new AddressPointer(identifier.Name);
             }

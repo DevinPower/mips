@@ -341,12 +341,12 @@ namespace Lexer.AST
 
         bool VariableIsArrayOrString(CompilationMeta ScopeMeta, string VariableName)
         {
-            return ScopeMeta.GetVariable(Name).Type == "string" || ScopeMeta.GetVariable(Name).ArraySize != 1;
+            return ScopeMeta.GetVariable(Name).Type == "string" || ScopeMeta.GetVariable(Name).IsArray;
         }
 
         bool ArgumentIsArrayOrString(CompilationMeta ScopeMeta, string VariableName, bool CanRecurse)
         {
-            return ScopeMeta.GetArgument(Name, CanRecurse).Type == "string" || ScopeMeta.GetArgument(Name, CanRecurse).ArraySize != 1;
+            return ScopeMeta.GetArgument(Name, CanRecurse).Type == "string" || ScopeMeta.GetArgument(Name, CanRecurse).IsArray;
         }
 
         //TODO: Can we refactor?
