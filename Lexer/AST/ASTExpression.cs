@@ -621,6 +621,9 @@ namespace Lexer.AST
 
             string offsetRegister = "0";
 
+            if (RHS.InferType(ScopeMeta) == "void")
+                throw new Exception($"Cannot assign void to '{Variable.Name}'");
+
             if (Variable.Offset != null)
             {
                 RegisterResult offsetResult = Variable.Offset.GenerateCode(ScopeMeta, Code);

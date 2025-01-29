@@ -203,7 +203,7 @@ namespace Lexer
                         CompilationMeta subScope = CompilationMeta.AddSubScope(false);
                         Expression block = ScriptBlock(CompilationMeta, subScope);
 
-                        CompilationMeta.AddFunction(FunctionName, "void", Arguments.Select((x) => x.type).ToList());
+                        CompilationMeta.AddFunction(FunctionName, ReturnType, Arguments.Select((x) => x.type).ToList());
                         foreach (var argument in Arguments)
                         {
                             subScope.AddArgument(argument.name, argument.type, argument.isArray);

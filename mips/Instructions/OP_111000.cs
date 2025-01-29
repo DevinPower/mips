@@ -51,7 +51,13 @@
 
         static void Mult((Computer Computer, int rs, int rt, int rd, int sa) passedArgs)
         {
-            throw new NotImplementedException("Float mult not implemented");
+            int result = HelperFunctions.FloatToInt(HelperFunctions.IntToFloat(passedArgs.Computer.Memory[passedArgs.rs]) * HelperFunctions.IntToFloat(passedArgs.Computer.Memory[passedArgs.rt]));
+
+            int lower32 = (int)(result & 0xFFFFFFFF);
+            int upper32 = (int)(result >> 32);
+
+            passedArgs.Computer.HIRegister = upper32;
+            passedArgs.Computer.LORegister = lower32;
         }
 
         static void Slt((Computer Computer, int rs, int rt, int rd, int sa) passedArgs)
