@@ -1,7 +1,30 @@
 ﻿using Lexer.AST;
+using System.Linq;
 
 namespace Lexer
 {
+    class OperatorOrder : OperatorListItem
+    {
+        public Token Token { get; set; }
+        public int Precedence = 100;
+
+        public OperatorOrder(Token Token, int Precedence)
+        {
+            this.Token = Token;
+            this.Precedence = Precedence;
+        }
+    }
+
+    class OperatorExpression : OperatorListItem
+    {
+        public Expression Expression { get; set; }
+    }
+
+    class OperatorListItem
+    {
+
+    }
+
     public class Parser
     {
         List<Token> _tokens;
@@ -417,6 +440,32 @@ namespace Lexer
             }
         }
 
+        public int GetOperatorPrecedence(string Value)
+        {
+            switch (Value)
+            {
+                case "&&":
+                case "||":
+                    return 3;
+                case "==":
+                case "<":
+                case ">":
+                    return 2;
+                case "+":
+                case "-":
+                case "*":
+                case "/":
+                case "%":
+                case "+=":
+                case "-=":
+                case "*=":
+                case "/=":
+                    return 1;
+                default:
+                    return 0;
+            }
+        }
+
         Expression Identifier(CompilationMeta CompilationMeta)
         {
             Variable identifier = new Variable(Previous().Value);
@@ -521,6 +570,61 @@ namespace Lexer
                 Console.WriteLine(line);
             }
             return Code.ToArray();
+        }
+
+        public Expression ParseExpressionChain(List<Token> tokens)
+        {
+            List<OperatorListItem> orders = new List<OperatorListItem>();
+            Expression result = null;
+
+            foreach (Token t in tokens)
+            {
+                int precedence = GetOperatorPrecedence(t.Value);
+                orders.Add(new OperatorOrder(t, precedence));
+            }
+
+            if (true)//while (true)
+            {
+                int precedenceLevel = 1;
+                bool foundAtLevel = false;
+                for (int i = 0; i < orders.Count; i++)
+                {
+                    if (orders[i] is OperatorOrder expr)
+                    {
+                        if (expr.Precedence > precedenceLevel)
+                            continue;
+
+                        int j = i + 1;
+
+                        OperatorExpression oe = new OperatorExpression();
+                        while (j < orders.Count)
+                        {
+                            if (orders[j] is OperatorOrder nextExpr)
+                            {
+                                if (nextExpr.Precedence > precedenceLevel)
+                                    break;
+                            }
+                            else
+                            {
+                                break;
+                            }
+                            j++;
+                        }
+
+                        List<Token> CurrentExpressions = orders.GetRange(i, j - 1)
+                            .Select((x) => (x as OperatorOrder).Token).ToList();
+
+                        orders.RemoveRange(i, j - i);
+                        orders.Insert(i, oe);
+                        foundAtLevel = true;
+                    }
+                }
+
+                //if (!foundAtLevel)
+                //    break;
+            }
+
+            return result;
         }
 
         public (CompilationMeta, List<Expression>) ParseCompilationMeta()
