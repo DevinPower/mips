@@ -18,6 +18,11 @@ namespace Lexer
     class OperatorExpression : OperatorListItem
     {
         public Expression Expression { get; set; }
+
+        public OperatorExpression(Expression Expression)
+        {
+            this.Expression = Expression;
+        }
     }
 
     class OperatorListItem
@@ -39,9 +44,7 @@ namespace Lexer
         Expression Expression(CompilationMeta CompilationMeta)
         {
             if (IsMatch(TokenTypes.Literal))
-                return Literal(CompilationMeta);
-            if (IsMatch(TokenTypes.Identifier))
-                return Identifier(CompilationMeta);
+                return ParseExpressionChain(CompilationMeta, ScoopOperatorExpressions());
             if (IsMatch(TokenTypes.Keyword))
                 return KeyWord(CompilationMeta);
             if (IsMatch(TokenTypes.MachineCode)) 
@@ -54,8 +57,20 @@ namespace Lexer
                 return null;
             if (IsMatch(TokenTypes.Include))
                 return AddInclude(CompilationMeta);
-            if (ExpressionStack.Count > 0 && IsMatch(TokenTypes.Operator))
-                return Operator(CompilationMeta);
+
+            if (IsMatch(TokenTypes.Identifier))
+            {
+                var identifier = Identifier(CompilationMeta);
+                ExpressionStack.Push(identifier);
+
+                if (identifier is FunctionCall)
+                    return identifier;
+
+                if (IsMatch(TokenTypes.Operator, "="))
+                    return Assignment(CompilationMeta);
+                
+                return ParseExpressionChain(CompilationMeta, ScoopOperatorExpressions());
+            }
 
             return null;
         }
@@ -80,39 +95,39 @@ namespace Lexer
 
         Expression Literal(CompilationMeta CompilationMeta)
         {
-            Literal literal = null;
             string literalValue = Previous().Value;
-            if (literalValue.StartsWith("0x"))
+            return HandleLiteral(CompilationMeta, literalValue);
+        }
+
+        Expression HandleLiteral(CompilationMeta CompilationMeta, string Value)
+        {
+            Literal literal = null;
+
+            if (Value.StartsWith("0x"))
             {
-                literal = new IntLiteral(Conversions.HexToInt(literalValue));
+                literal = new IntLiteral(Conversions.HexToInt(Value));
             }
-            else if (literalValue.EndsWith("f"))
+            else if (Value.EndsWith("f"))
             {
-                float floatLiteral = float.Parse(literalValue.Substring(0, literalValue.Length - 1));
+                float floatLiteral = float.Parse(Value.Substring(0, Value.Length - 1));
                 literal = new FloatLiteral(floatLiteral);
             }
-            else if (literalValue.StartsWith('\'') && literalValue.EndsWith('\''))
+            else if (Value.StartsWith('\'') && Value.EndsWith('\''))
             {
-                literal = new IntLiteral((int)literalValue[1]);
+                literal = new IntLiteral((int)Value[1]);
             }
-            else if (Int32.TryParse(literalValue, out int intLiteral))
+            else if (Int32.TryParse(Value, out int intLiteral))
             {
                 literal = new IntLiteral(intLiteral);
             }
             else
             {
-                string strGuid = CompilationMeta.AddString(literalValue);
+                string strGuid = CompilationMeta.AddString(Value);
                 literal = new StringLiteral(strGuid);
             }
 
             if (literal == null)
-                throw new Exception($"Literal value type unknown '{literalValue}'");
-
-            if (!IsLogicOperator(Peek().Value) && IsMatch(TokenTypes.Operator))
-            {
-                ExpressionStack.Push(literal);
-                return Operator(CompilationMeta);
-            }
+                throw new Exception($"Literal value type unknown '{Value}'");
 
             return literal;
         }
@@ -236,13 +251,7 @@ namespace Lexer
                     }
                 case "return":
                     {
-                        Expression returnExpression = null;
-
-                        if (IsMatch(TokenTypes.Identifier))
-                            returnExpression = Identifier(CompilationMeta);
-                        else if (IsMatch(TokenTypes.Literal))
-                            returnExpression = Literal(CompilationMeta);
-                        //TODO: Support function calls
+                        Expression returnExpression = Expression(CompilationMeta);
 
                         if (returnExpression == null)
                             throw new Exception("Invalid return type");
@@ -396,33 +405,11 @@ namespace Lexer
             return false;
         }
 
-        Expression Operator(CompilationMeta CompilationMeta)
+        Expression Assignment(CompilationMeta CompilationMeta)
         {
-            OperatorTypes type = GetOperatorType(Previous().Value);
-            bool SelfAssign = IsSelfAssign(Previous().Value);
-
-            if (type == OperatorTypes.ASSIGN)
-            {
-                var result = new Assignment((Variable)ExpressionStack.Pop(), Expression(CompilationMeta));
-                ExpressionStack.Push(result);
-                return result;
-            }
-
-            if (IsMatch(TokenTypes.Literal))
-            {
-                var result = new Operator(ExpressionStack.Pop(), type, Literal(CompilationMeta), SelfAssign);
-                ExpressionStack.Push(result);
-                return result;
-            }
-
-            if (IsMatch(TokenTypes.Identifier))
-            {
-                var result = new Operator(ExpressionStack.Pop(), type, Identifier(CompilationMeta), SelfAssign);
-                ExpressionStack.Push(result);
-                return result;
-            }
-
-            return null;
+            var result = new Assignment((Variable)ExpressionStack.Pop(), Expression(CompilationMeta));
+            ExpressionStack.Push(result);
+            return result;
         }
 
         bool IsLogicOperator(string Value)
@@ -446,20 +433,21 @@ namespace Lexer
             {
                 case "&&":
                 case "||":
-                    return 3;
+                    return 4;
                 case "==":
                 case "<":
                 case ">":
-                    return 2;
-                case "+":
-                case "-":
+                    return 3;
                 case "*":
                 case "/":
                 case "%":
-                case "+=":
-                case "-=":
                 case "*=":
                 case "/=":
+                    return 2;
+                case "+":
+                case "-":
+                case "+=":
+                case "-=":
                     return 1;
                 default:
                     return 0;
@@ -468,7 +456,12 @@ namespace Lexer
 
         Expression Identifier(CompilationMeta CompilationMeta)
         {
-            Variable identifier = new Variable(Previous().Value);
+            return HandleIdentifier(CompilationMeta, Previous().Value);
+        }
+
+        Expression HandleIdentifier(CompilationMeta CompilationMeta, string Value)
+        {
+            Variable identifier = new Variable(Value);
 
             if (IsMatch(TokenTypes.Separator, "["))
             {
@@ -511,10 +504,7 @@ namespace Lexer
 
                 while (!IsMatch(TokenTypes.Separator, ")"))
                 {
-                    if (IsMatch(TokenTypes.Identifier))
-                        Arguments.Add(Identifier(CompilationMeta));
-                    else if (IsMatch(TokenTypes.Literal))
-                        Arguments.Add(Literal(CompilationMeta));
+                    Arguments.Add(Expression(CompilationMeta));
 
                     if (!IsMatch(TokenTypes.Separator, ",") && Peek().Value != ")")
                         throw new Exception("Argument format issue");
@@ -522,24 +512,12 @@ namespace Lexer
 
                 FunctionCall func = new FunctionCall(identifier.Name, Arguments);
 
-                if (!IsLogicOperator(Peek().Value) && IsMatch(TokenTypes.Operator))
-                {
-                    ExpressionStack.Push(func);
-                    return Operator(CompilationMeta);
-                }
-
                 return func;
             }
 
             if (IsMatch(TokenTypes.Separator, "("))
             {
                 throw new Exception($"Unknown function '{identifier.Name}'");
-            }
-
-            if (!IsLogicOperator(Peek().Value) && IsMatch(TokenTypes.Operator))
-            {
-                ExpressionStack.Push(identifier);
-                return Operator(CompilationMeta);
             }
 
             if (CompilationMeta.GetVariable(identifier.Name) != null && !identifier.HasOffset() && CompilationMeta.GetVariable(identifier.Name).IsArray)
@@ -572,10 +550,37 @@ namespace Lexer
             return Code.ToArray();
         }
 
-        public Expression ParseExpressionChain(List<Token> tokens)
+        public List<Token> ScoopOperatorExpressions()
+        {
+            List<Token> tokens = new List<Token>();
+            tokens.Add(Previous());
+
+            while (Peek().TokenType == TokenTypes.Operator || Peek().TokenType == TokenTypes.Literal || Peek().TokenType == TokenTypes.Identifier)
+            {
+                tokens.Add(Peek());
+
+                if (Peek().TokenType == TokenTypes.Identifier)
+                {
+                    Advance();
+                    if (IsMatch(TokenTypes.Separator, "["))
+                    {
+                        if (!IsMatch(TokenTypes.Separator, "]"))
+                            throw new Exception("Expected array close");
+                    }
+                }
+                else
+                {
+                    Advance();
+                }
+            }
+
+            return tokens;
+        }
+
+        //TODO: Consider finding max precedence dynamically in case we make changes in the future
+        public Expression ParseExpressionChain(CompilationMeta CompilationMeta, List<Token> tokens)
         {
             List<OperatorListItem> orders = new List<OperatorListItem>();
-            Expression result = null;
 
             foreach (Token t in tokens)
             {
@@ -583,10 +588,8 @@ namespace Lexer
                 orders.Add(new OperatorOrder(t, precedence));
             }
 
-            if (true)//while (true)
+            for (int precedenceLevel = 1; precedenceLevel <= 4; precedenceLevel++)
             {
-                int precedenceLevel = 1;
-                bool foundAtLevel = false;
                 for (int i = 0; i < orders.Count; i++)
                 {
                     if (orders[i] is OperatorOrder expr)
@@ -594,37 +597,53 @@ namespace Lexer
                         if (expr.Precedence > precedenceLevel)
                             continue;
 
-                        int j = i + 1;
+                        OperatorExpression swapValue = null;
 
-                        OperatorExpression oe = new OperatorExpression();
-                        while (j < orders.Count)
+                        switch (expr.Token.TokenType)
                         {
-                            if (orders[j] is OperatorOrder nextExpr)
-                            {
-                                if (nextExpr.Precedence > precedenceLevel)
-                                    break;
-                            }
-                            else
-                            {
+                            case TokenTypes.Literal:
+                                swapValue = new OperatorExpression(HandleLiteral(CompilationMeta, expr.Token.Value));
                                 break;
-                            }
-                            j++;
+                            case TokenTypes.Identifier:
+                                swapValue = new OperatorExpression(HandleIdentifier(CompilationMeta, expr.Token.Value));
+                                break;
                         }
 
-                        List<Token> CurrentExpressions = orders.GetRange(i, j - 1)
-                            .Select((x) => (x as OperatorOrder).Token).ToList();
+                        if (swapValue == null)
+                            continue;
 
-                        orders.RemoveRange(i, j - i);
-                        orders.Insert(i, oe);
-                        foundAtLevel = true;
+                        orders[i] = swapValue;
                     }
                 }
-
-                //if (!foundAtLevel)
-                //    break;
             }
 
-            return result;
+            for (int precedenceLevel = 1; precedenceLevel <= 4; precedenceLevel++)
+            {
+                for (int i = 0; i < orders.Count; i++)
+                {
+                    if (orders[i] is OperatorOrder operatorToken)
+                    {
+                        if (operatorToken.Precedence > precedenceLevel)
+                            continue;
+
+                        OperatorTypes type = GetOperatorType(operatorToken.Token.Value);
+                        bool SelfAssign = IsSelfAssign(operatorToken.Token.Value);
+
+                        Expression LHS = (orders[i - 1] as OperatorExpression).Expression;
+                        Expression RHS = (orders[i + 1] as OperatorExpression).Expression;
+
+                        orders[i] = new OperatorExpression(new Operator(LHS, type, RHS, SelfAssign));
+                        orders.RemoveAt(i + 1);
+                        orders.RemoveAt(i - 1);
+                    }
+                }
+            }
+
+            if (orders.Count > 1 || !(orders[0] is OperatorExpression))
+                throw new Exception("Expression chain resulting in 2 orders or non-expression?");
+
+            ExpressionStack.Push((orders[0] as OperatorExpression).Expression);
+            return (orders[0] as OperatorExpression).Expression;
         }
 
         public (CompilationMeta, List<Expression>) ParseCompilationMeta()
