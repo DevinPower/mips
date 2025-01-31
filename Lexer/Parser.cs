@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace Lexer
 {
-    class OperatorOrder : OperatorListItem
+    public class OperatorOrder : OperatorListItem
     {
         public Token Token { get; set; }
         public int Precedence = 100;
@@ -15,7 +15,7 @@ namespace Lexer
         }
     }
 
-    class OperatorExpression : OperatorListItem
+    public class OperatorExpression : OperatorListItem
     {
         public Expression Expression { get; set; }
 
@@ -25,7 +25,7 @@ namespace Lexer
         }
     }
 
-    class OperatorListItem
+    public class OperatorListItem
     {
 
     }
@@ -44,7 +44,7 @@ namespace Lexer
         Expression Expression(CompilationMeta CompilationMeta)
         {
             if (IsMatch(TokenTypes.Literal))
-                return ParseExpressionChain(CompilationMeta, ScoopOperatorExpressions());
+                return ParseExpressionChain(CompilationMeta, ScoopOperatorExpressions(CompilationMeta));
             if (IsMatch(TokenTypes.Keyword))
                 return KeyWord(CompilationMeta);
             if (IsMatch(TokenTypes.MachineCode)) 
@@ -60,7 +60,7 @@ namespace Lexer
 
             if (IsMatch(TokenTypes.Identifier))
             {
-                var identifier = Identifier(CompilationMeta);
+                var identifier = ParseExpressionChain(CompilationMeta, ScoopOperatorExpressions(CompilationMeta));
                 ExpressionStack.Push(identifier);
 
                 if (identifier is FunctionCall)
@@ -69,7 +69,7 @@ namespace Lexer
                 if (IsMatch(TokenTypes.Operator, "="))
                     return Assignment(CompilationMeta);
                 
-                return ParseExpressionChain(CompilationMeta, ScoopOperatorExpressions());
+                return identifier;
             }
 
             return null;
@@ -465,33 +465,11 @@ namespace Lexer
 
             if (IsMatch(TokenTypes.Separator, "["))
             {
-                if (IsMatch(TokenTypes.Literal))
-                {
-                    Literal offset = (Literal)Literal(CompilationMeta);
-                    if (offset is IntLiteral intOffset)
-                    {
-                        if (!IsMatch(TokenTypes.Separator, "]"))
-                            throw new Exception("Expected array close ']'");
+                Expression offset = Expression(CompilationMeta);
+                identifier.SetOffset(offset);
 
-                        identifier.SetOffset(intOffset);
-                    }
-                    else
-                    {
-                        throw new Exception($"Expected array offset, got '{offset.ToString()}'");
-                    }
-                }
-                else if (IsMatch(TokenTypes.Identifier))
-                {
-                    Expression offset = Identifier(CompilationMeta);
-                    if (!IsMatch(TokenTypes.Separator, "]"))
-                        throw new Exception("Expected array close ']'");
-
-                    identifier.SetOffset(offset);
-                }
-                else
-                {
-                    throw new Exception("Expected int literal for array");
-                }
+                if (!IsMatch(TokenTypes.Separator, "]"))
+                    throw new Exception("Expected array close");
             }
 
             var FunctionData = CompilationMeta.GetFunction(identifier.Name);
@@ -550,73 +528,46 @@ namespace Lexer
             return Code.ToArray();
         }
 
-        public List<Token> ScoopOperatorExpressions()
+        public List<OperatorListItem> ScoopOperatorExpressions(CompilationMeta CompilationMeta)
         {
-            List<Token> tokens = new List<Token>();
-            tokens.Add(Previous());
+            List<OperatorListItem> operatorItems = new List<OperatorListItem>();
 
-            while (Peek().TokenType == TokenTypes.Operator || Peek().TokenType == TokenTypes.Literal || Peek().TokenType == TokenTypes.Identifier)
-            {
-                tokens.Add(Peek());
+            void handleToken(Token currentToken){
+                int precedence = GetOperatorPrecedence(currentToken.Value);
 
-                if (Peek().TokenType == TokenTypes.Identifier)
+                switch (currentToken.TokenType)
                 {
-                    Advance();
-                    if (IsMatch(TokenTypes.Separator, "["))
-                    {
-                        if (!IsMatch(TokenTypes.Separator, "]"))
-                            throw new Exception("Expected array close");
-                    }
-                }
-                else
-                {
-                    Advance();
+                    case TokenTypes.Operator:
+                        operatorItems.Add(new OperatorOrder(currentToken, precedence));
+                        if (operatorItems.Count != 1)
+                            Advance();
+                        break;
+                    case TokenTypes.Identifier:
+                        operatorItems.Add(new OperatorExpression(HandleIdentifier(CompilationMeta, currentToken.Value)));
+                        if (operatorItems.Count != 1)
+                            Advance();
+                        break;
+                    case TokenTypes.Literal:
+                        operatorItems.Add(new OperatorExpression(HandleLiteral(CompilationMeta, currentToken.Value)));
+                        if (operatorItems.Count != 1)
+                            Advance();
+                        break;
                 }
             }
 
-            return tokens;
+            handleToken(Previous());
+
+            while ((Peek().TokenType == TokenTypes.Operator && Peek().Value != "=") || Peek().TokenType == TokenTypes.Literal || Peek().TokenType == TokenTypes.Identifier)
+            {
+                handleToken(Peek());
+            }
+
+            return operatorItems;
         }
 
         //TODO: Consider finding max precedence dynamically in case we make changes in the future
-        public Expression ParseExpressionChain(CompilationMeta CompilationMeta, List<Token> tokens)
+        public Expression ParseExpressionChain(CompilationMeta CompilationMeta, List<OperatorListItem> orders)
         {
-            List<OperatorListItem> orders = new List<OperatorListItem>();
-
-            foreach (Token t in tokens)
-            {
-                int precedence = GetOperatorPrecedence(t.Value);
-                orders.Add(new OperatorOrder(t, precedence));
-            }
-
-            for (int precedenceLevel = 1; precedenceLevel <= 4; precedenceLevel++)
-            {
-                for (int i = 0; i < orders.Count; i++)
-                {
-                    if (orders[i] is OperatorOrder expr)
-                    {
-                        if (expr.Precedence > precedenceLevel)
-                            continue;
-
-                        OperatorExpression swapValue = null;
-
-                        switch (expr.Token.TokenType)
-                        {
-                            case TokenTypes.Literal:
-                                swapValue = new OperatorExpression(HandleLiteral(CompilationMeta, expr.Token.Value));
-                                break;
-                            case TokenTypes.Identifier:
-                                swapValue = new OperatorExpression(HandleIdentifier(CompilationMeta, expr.Token.Value));
-                                break;
-                        }
-
-                        if (swapValue == null)
-                            continue;
-
-                        orders[i] = swapValue;
-                    }
-                }
-            }
-
             for (int precedenceLevel = 1; precedenceLevel <= 4; precedenceLevel++)
             {
                 for (int i = 0; i < orders.Count; i++)
