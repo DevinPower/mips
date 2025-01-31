@@ -370,7 +370,7 @@ namespace Lexer.AST
                     {
                         RegisterResult StringAddress = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
 
-                        Code.Add($"LB {StringAddress}, {Name}(0)");
+                        Code.Add($"La {StringAddress}, {Name}(0)");
                         Code.Add($"Add {StringAddress}, {StringAddress}, {offsetRegister}");
                         Code.Add($"LB {ResultRegister}, 0({StringAddress})");
 
@@ -413,7 +413,10 @@ namespace Lexer.AST
                     return resultRegister;
                 }
 
-                return new RegisterResult($"a{ArgumentPosition}");
+                RegisterResult ResultRegisterPointer = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
+                Code.Add($"Move {ResultRegisterPointer}, $a{ArgumentPosition}");
+
+                return ResultRegisterPointer;
             }
         }
 
