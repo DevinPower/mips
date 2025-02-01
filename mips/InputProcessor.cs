@@ -369,24 +369,4 @@ namespace mips
             Length = length;
         }
     }
-
-    /*public class InputInstruction
-    {
-        public int Value { get; set; }
-        List<string> Instructions;
-
-        public InputInstruction(List<string> Instructions)
-        {
-            this.Instructions = Instructions;
-        }
-
-        public void SetResult(int Result)
-        {
-            this.Value = Result;
-        }
-
-
-    }*/
 }
-
-

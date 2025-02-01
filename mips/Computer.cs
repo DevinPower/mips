@@ -390,9 +390,34 @@ public class Computer
         Memory[i++] = 0;    //null terminator
     }
 
+    int FindMemoryOfLength(int Length)
+    {
+        int startSearch = 31;
+
+        while (true)
+        {
+            int size = 0;
+            for (int i = 0; i < Length; i++)
+            {
+                if (Memory[startSearch + i] != 0)
+                {
+                    startSearch += Memory[startSearch + i];
+                    break;
+                }
+                size++;
+            }
+
+            if (size == Length)
+                return startSearch;
+
+            if (startSearch >= _heapPointer)
+                throw new Exception("Out of memory exception");
+        }
+    }
+
     void SBRK()
     {
-        throw new NotImplementedException();
+        Memory[GetRegisterAddress("$v0")] = FindMemoryOfLength(Memory[GetRegisterAddress("$a0")]);
     }
 
     void Exit()

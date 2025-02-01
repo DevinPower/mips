@@ -151,7 +151,7 @@ namespace Lexer.AST
         public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
         {
             RegisterResult ResultRegister = new RegisterResult($"t{ScopeMeta.GetTempRegister()}");
-            Code.Add($"Li {ResultRegister}, {Conversions.FloatToInt(Value)}");
+            Code.Add($"Li {ResultRegister}, {Helpers.FloatToInt(Value)}");
             return ResultRegister;
         }
 
@@ -341,6 +341,19 @@ namespace Lexer.AST
             else
             {
                 return ScopeMeta.GetArgument(Name, true).Type;
+            }
+        }
+
+        public int GetVariableSize(CompilationMeta ScopeMeta)
+        {
+            int ArgumentPosition = ScopeMeta.GetArgumentPosition(Name, true);
+            if (ArgumentPosition == -1)
+            {
+                return ScopeMeta.GetVariable(Name).DataSize;
+            }
+            else
+            {
+                return ScopeMeta.GetArgument(Name, true).DataSize;
             }
         }
 
@@ -757,6 +770,71 @@ namespace Lexer.AST
             {
                 ScopedMeta.FreeTempRegister(register);
             }
+        }
+    }
+
+    public class ClassDefinition : Expression
+    {
+        public string Name { get; private set; }
+        CompilationMeta ScopedMeta;
+        public List<FunctionDefinition> FunctionDefinitions { get; private set; }
+        public List<Variable> VariableDefinitions { get; private set; }
+
+
+        public ClassDefinition(CompilationMeta ScopedMeta, string Name, List<FunctionDefinition> FunctionDefinitions, List<Variable> VariableDefinitions)
+        {
+            this.Name = Name;
+            this.FunctionDefinitions = FunctionDefinitions;
+            this.VariableDefinitions = VariableDefinitions;
+            this.ScopedMeta = ScopedMeta;
+        }
+
+        public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
+        {
+            int DataSize = 0;
+            string EndGuid = System.Guid.NewGuid().ToString().Replace("-", "");
+
+            Code.Add($"J {EndGuid}");
+            Code.Add($"{Name}.Instantiate:");
+            foreach (Variable v in VariableDefinitions)
+            {
+                DataSize += v.GetVariableSize(ScopedMeta);
+            }
+
+            foreach (FunctionDefinition f in FunctionDefinitions)
+            {
+                ScopeMeta.FreeTempRegister(f.GenerateCode(ScopedMeta, Code));
+            }
+
+            RegisterResult resultRegister = Helpers.HeapAllocation(ScopedMeta, Code, DataSize);
+            Code.Add($"Jr $ra");
+            Code.Add($"{EndGuid}:");
+
+            return resultRegister;
+        }
+    }
+
+    public class ClassInstantiation : Expression
+    {
+        public string Name { get; private set; }
+
+        public ClassInstantiation(string Name)
+        {
+            this.Name = Name;
+        }
+
+        public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
+        {
+            FunctionCallRegisterState registerState = new FunctionCallRegisterState(new FunctionCall(Name, new List<Expression>()), ScopeMeta);
+            registerState.SaveState(Code);
+            Code.Add($"Jal {Name}.Instantiate");
+
+            registerState.LoadState(Code);
+
+            RegisterResult resultRegister = new RegisterResult($"t{ScopeMeta.GetTempRegister()}");
+            Code.Add($"Move {resultRegister}, $v0");
+
+            return resultRegister;
         }
     }
 }

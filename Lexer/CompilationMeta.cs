@@ -9,6 +9,7 @@ namespace Lexer
         public int DataSize { get; set; } = 1;
         public bool IsArray { get; set; }
         public bool IsLocal { get; private set; }
+        public bool IsHeapAllocated { get; set; }
 
         int? _stackOffset = null;
 
@@ -78,12 +79,27 @@ namespace Lexer
         }
     }
 
+    public class ClassMeta
+    {
+        public string Name { get; set; }
+        public List<VariableMeta> Properties { get; set; }
+        public List<FunctionMeta> Functions { get; set; }
+
+        public ClassMeta(string Name, List<VariableMeta> Properties, List<FunctionMeta> Functions)
+        {
+            this.Name = Name;
+            this.Properties = Properties;
+            this.Functions = Functions;
+        }
+    }
+
     public class CompilationMeta
     {
         protected List<string> Includes = new List<string>();
         protected CompilationMeta _Parent;
         protected List<VariableMeta> Variables = new List<VariableMeta>();
         protected List<FunctionMeta> Functions = new List<FunctionMeta>();
+        protected List<ClassMeta> Classes = new List<ClassMeta>();
         protected Dictionary<string, string> StringData = new Dictionary<string, string>();
         public bool[] TempRegisters = new bool[8];
         protected List<CompilationMeta> _childScopes = new List<CompilationMeta>();
@@ -130,6 +146,21 @@ namespace Lexer
                 throw new Exception($"Include for '{FileName}' added outside of parent scope.");
 
             Includes.Add(FileName);
+        }
+
+        public void AddClass(string ClassName, List<VariableMeta> Properties, List<FunctionMeta> Functions)
+        {
+            Classes.Add(new ClassMeta(ClassName, Properties, Functions));
+        }
+
+        public bool IsClass(string ClassName)
+        {
+            if (Classes.Count((x)=>x.Name == ClassName) == 1)
+                return true;
+
+            if (_Parent == null) return false;
+
+            return _Parent.IsClass(ClassName);
         }
 
         public CompilationMeta AddSubScope(bool CopyRegisters)
@@ -267,7 +298,8 @@ namespace Lexer
         {
             foreach (VariableMeta variable in Variables)
             {
-                Code.Insert(InsertCount++, variable.GenerateData());
+                if (!variable.IsHeapAllocated)
+                    Code.Insert(InsertCount++, variable.GenerateData());
             }
         }
 

@@ -84,9 +84,59 @@ namespace Lexer
                 throw new Exception($"Expected class block for {ClassName}");
 
             var classScope = CompilationMeta.AddSubScope(false);
-            Expression classBody = ScriptBlock(CompilationMeta, classScope);
+            List<FunctionDefinition> functionDefinitions = new List<FunctionDefinition>();
+            List<Variable> variableDefinitions = new List<Variable>();
 
-            return classBody;
+            while (!IsMatch(TokenTypes.Separator, "}"))
+            {
+                ConsumeWhitespaceAndComments();
+                if (IsMatch(TokenTypes.Separator, "}"))
+                    break;
+
+                if (IsMatch(TokenTypes.Keyword))
+                {
+                    var result = KeyWord(classScope);
+                    if (result is FunctionDefinition func)
+                    {
+                        functionDefinitions.Add(func);
+                        continue;
+                    }
+
+                    if (result is Variable var)
+                    {
+                        variableDefinitions.Add(var);
+
+                        if (!IsMatch(TokenTypes.Separator, ";"))
+                            throw new Exception($"Expected semicolon after variable {var.Name} in {ClassName}");
+
+                        continue;
+                    }
+                }
+                else
+                {
+                    throw new Exception($"Unexpected token type in class '{Peek().Value}'");
+                }
+
+                if (current == _tokens.Count)
+                    break;
+            }
+
+            var variablesMeta = variableDefinitions.Select((x) => {
+                return classScope.GetVariable(x.Name);
+            }).ToList();
+
+            foreach(VariableMeta variableMeta in variablesMeta)
+            {
+                variableMeta.IsHeapAllocated = true;
+            }
+
+            CompilationMeta.AddClass(ClassName,
+                variablesMeta, 
+                functionDefinitions.Select((x) => {
+                    return classScope.GetFunction(x.Name);
+                }).ToList());
+
+            return new ClassDefinition(classScope, ClassName, functionDefinitions, variableDefinitions);
         }
 
         ScriptBlock AddInclude(CompilationMeta CompilationMeta)
@@ -119,7 +169,7 @@ namespace Lexer
 
             if (Value.StartsWith("0x"))
             {
-                literal = new IntLiteral(Conversions.HexToInt(Value));
+                literal = new IntLiteral(Helpers.HexToInt(Value));
             }
             else if (Value.EndsWith("f"))
             {
@@ -240,6 +290,19 @@ namespace Lexer
                 case "class":
                     {
                         return Class(CompilationMeta);
+                    }
+                case "new":
+                    {
+                        string ClassName = Peek().Value;
+                        Advance();
+
+                        if (!IsMatch(TokenTypes.Separator, "("))
+                            throw new Exception("Missing parans on object instantiation");
+
+                        if (!IsMatch(TokenTypes.Separator, ")"))
+                            throw new Exception("Missing parans on object instantiation");
+
+                        return new ClassInstantiation(ClassName);
                     }
                 case "function":
                     {
@@ -468,11 +531,6 @@ namespace Lexer
                 default:
                     return 0;
             }
-        }
-
-        Expression Identifier(CompilationMeta CompilationMeta)
-        {
-            return HandleIdentifier(CompilationMeta, Previous().Value);
         }
 
         Expression HandleIdentifier(CompilationMeta CompilationMeta, string Value)
