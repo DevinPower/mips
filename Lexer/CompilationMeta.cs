@@ -10,21 +10,29 @@ namespace Lexer
         public bool IsArray { get; set; }
         public bool IsLocal { get; private set; }
         public bool IsHeapAllocated { get; set; }
+        bool _IsClass = false;
 
         int? _stackOffset = null;
 
-        public VariableMeta(string Name, string Type)
+        public VariableMeta(string Name, string Type, bool IsClass)
         {
             this.Name = Name;
             this.Type = Type;
+            _IsClass = IsClass;
         }
 
-        public VariableMeta(string Name, string Type, int ArraySize)
+        public VariableMeta(string Name, string Type, int ArraySize, bool IsClass)
         {
             this.Name = Name;
             this.Type = Type;
             this.DataSize = ArraySize;
             this.IsArray = true;
+            _IsClass = IsClass;
+        }
+
+        public bool IsClass()
+        {
+            return _IsClass;
         }
 
         string HandleType()
@@ -38,6 +46,9 @@ namespace Lexer
                 case "string":
                     return $".word {DataSize}";
             }
+
+            if (_IsClass)
+                return $".word {DataSize}";
 
             throw new Exception($";error generating data for Type {Type} on variable {Name}");
         }
@@ -84,6 +95,44 @@ namespace Lexer
         public string Name { get; set; }
         public List<VariableMeta> Properties { get; set; }
         public List<FunctionMeta> Functions { get; set; }
+
+
+        public int GetClassDataPosition(string Property)
+        {
+            int offset = 0;
+            foreach(VariableMeta Meta in Properties)
+            {
+                if (Meta.Name == Property)
+                    return offset;
+
+                offset += Meta.DataSize;
+            }
+
+            throw new Exception($"Property {Property} not found on class type {Name}");
+        }
+
+        public string GetPropertyType(string Property)
+        {
+            foreach (VariableMeta Meta in Properties)
+            {
+                if (Meta.Name == Property)
+                    return Meta.Type;
+            }
+
+            throw new Exception($"Property {Property} not found on class type {Name}");
+        }
+
+        public int GetClassDataSize()
+        {
+            int offset = 0;
+            foreach (VariableMeta Meta in Properties)
+            {
+                offset += Meta.DataSize;
+            }
+
+            return offset;
+        }
+
 
         public ClassMeta(string Name, List<VariableMeta> Properties, List<FunctionMeta> Functions)
         {
@@ -153,6 +202,37 @@ namespace Lexer
             Classes.Add(new ClassMeta(ClassName, Properties, Functions));
         }
 
+        public void RaiseFunctionToRoot(string FunctionName)
+        {
+            if (_Parent == null)
+                return;
+
+            FunctionMeta? FunctionMeta = GetFunction(FunctionName);
+
+            if (FunctionMeta == null)
+                throw new Exception($"Unknown function {FunctionName}; cannot raise to root");
+
+            CompilationMeta Current = this;
+            while(Current._Parent != null)
+            {
+                Current = Current._Parent;
+            }
+
+            Current.AddFunction(FunctionMeta);
+            Functions.Remove(FunctionMeta);
+        }
+
+        public ClassMeta GetClass(string ClassName)
+        {
+            if (Classes.Count((x) => x.Name == ClassName) == 1)
+                return Classes.First((x) => x.Name == ClassName);
+
+            if (_Parent == null)
+                throw new Exception($"Class {ClassName} not found");
+
+            return _Parent.GetClass(ClassName);
+        }
+
         public bool IsClass(string ClassName)
         {
             if (Classes.Count((x)=>x.Name == ClassName) == 1)
@@ -174,6 +254,11 @@ namespace Lexer
         public void AddFunction(string Name, string ReturnType, List<string> ArgumentTypes)
         {
             Functions.Add(new FunctionMeta(Name, ReturnType, ArgumentTypes));
+        }
+
+        public void AddFunction(FunctionMeta FunctionMeta)
+        {
+            Functions.Add(FunctionMeta);
         }
 
         public FunctionMeta? GetFunction(string Name)
@@ -220,23 +305,23 @@ namespace Lexer
             return Matches.First();
         }
 
-        public void AddVariable(string Variable, string Type)
+        public void AddVariable(string Variable, string Type, bool IsClass)
         {
-            Variables.Add(new VariableMeta(Variable, Type));
+            Variables.Add(new VariableMeta(Variable, Type, IsClass));
         }
 
-        public void AddVariableArray(string Variable, string Type, int Size)
+        public void AddVariableArray(string Variable, string Type, int Size, bool IsClass)
         {
-            Variables.Add(new VariableMeta(Variable, Type, Size));
+            Variables.Add(new VariableMeta(Variable, Type, Size, IsClass));
         }
 
-        public void AddArgument(string Name, string Type, bool IsArray)
+        public void AddArgument(string Name, string Type, bool IsArray, bool IsClass)
         {
             for(int i = 0; i < Arguments.Length; i++)
             {
                 if (Arguments[i] == null)
                 {
-                    Arguments[i] = new VariableMeta(Name, Type, IsArray ? 2 : 0);
+                    Arguments[i] = new VariableMeta(Name, Type, IsArray ? 2 : 0, IsClass);
                     return;
                 }
             }

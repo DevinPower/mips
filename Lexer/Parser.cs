@@ -60,6 +60,19 @@ namespace Lexer
 
             if (IsMatch(TokenTypes.Identifier))
             {
+                if (CompilationMeta.IsClass(Previous().Value))
+                {
+                    string type = Previous().Value;
+                    string name = Peek().Value;
+                    var result = VariableDeclaration(CompilationMeta, name, type);
+                    ExpressionStack.Push(result);
+
+                    if (IsMatch(TokenTypes.Operator, "="))
+                        return Assignment(CompilationMeta);
+
+                    return result;
+                }
+
                 var identifier = ParseExpressionChain(CompilationMeta, ScoopOperatorExpressions(CompilationMeta));
                 ExpressionStack.Push(identifier);
 
@@ -98,7 +111,9 @@ namespace Lexer
                     var result = KeyWord(classScope);
                     if (result is FunctionDefinition func)
                     {
+                        func.PrependName($"{ClassName}.");
                         functionDefinitions.Add(func);
+
                         continue;
                     }
 
@@ -129,6 +144,14 @@ namespace Lexer
             {
                 variableMeta.IsHeapAllocated = true;
             }
+
+            //TODO: This could be represented more clearly
+
+            functionDefinitions.ForEach((x) => {
+                string NewName = $"{ClassName}." + classScope.GetFunction(x.Name.Split('.')[1]).Name;
+                classScope.GetFunction(x.Name.Split('.')[1]).Name = NewName;
+                classScope.RaiseFunctionToRoot(NewName);
+            });
 
             CompilationMeta.AddClass(ClassName,
                 variablesMeta, 
@@ -217,9 +240,9 @@ namespace Lexer
             return new ScriptBlock(expressions, subScope);
         }
 
-        List<(string, string, bool)> GetArguments()
+        List<(string, string, bool, bool)> GetArguments(CompilationMeta CompilationMeta)
         {
-            List<(string, string, bool)> Arguments = new List<(string, string, bool)> ();
+            List<(string, string, bool, bool)> Arguments = new List<(string, string, bool, bool)> ();
             if (!IsMatch(TokenTypes.Separator, "("))
                 throw new Exception("Expected arguments....");
 
@@ -236,7 +259,9 @@ namespace Lexer
                 if (!IsMatch(TokenTypes.Separator, ",") && Peek().Value != ")")
                     throw new Exception("Argument format issue");
 
-                Arguments.Add((type, name, isArray));
+                bool isClass = CompilationMeta.IsClass(type);
+
+                Arguments.Add((type, name, isArray, isClass));
             }
 
             return Arguments;
@@ -251,41 +276,7 @@ namespace Lexer
                 case "float":
                 case "char":
                     {
-                        string Name = Peek().Value;
-                        string Type = Previous().Value;
-                        Expression result = null;
-
-                        if (IsMatch(TokenTypes.Separator, "["))
-                        {
-                            if (IsMatch(TokenTypes.Literal))
-                            {
-                                Literal size = (Literal)Literal(CompilationMeta);
-                                if (size is IntLiteral intSize)
-                                {
-                                    if (!IsMatch(TokenTypes.Separator, "]"))
-                                        throw new Exception("Expected array close ']'");
-
-                                    Name = Peek().Value;
-                                    CompilationMeta.AddVariableArray(Name, Type, intSize.Value);
-                                    result = Expression(CompilationMeta);
-                                    ExpressionStack.Push(result);
-                                    return result;
-                                }
-                                else
-                                {
-                                    throw new Exception($"Expected array size, got '{size.ToString()}'");
-                                }
-                            }
-                            else
-                            {
-                                throw new Exception("Expected int literal for array");
-                            }
-                        }
-
-                        CompilationMeta.AddVariable(Name, Type);
-                        result = Expression(CompilationMeta);
-                        ExpressionStack.Push(result);
-                        return result;
+                        return HandleVariableDeclaration(CompilationMeta);
                     }
                 case "class":
                     {
@@ -310,7 +301,7 @@ namespace Lexer
                         Advance();
                         string FunctionName = Peek().Value;
                         Advance();
-                        List<(string type, string name, bool isArray)> Arguments = GetArguments();
+                        List<(string type, string name, bool isArray, bool isClass)> Arguments = GetArguments(CompilationMeta);
 
                         ConsumeWhitespaceAndComments();
 
@@ -323,7 +314,7 @@ namespace Lexer
                         CompilationMeta.AddFunction(FunctionName, ReturnType, Arguments.Select((x) => x.type).ToList());
                         foreach (var argument in Arguments)
                         {
-                            subScope.AddArgument(argument.name, argument.type, argument.isArray);
+                            subScope.AddArgument(argument.name, argument.type, argument.isArray, argument.isClass);
                         }
 
                         return new FunctionDefinition(FunctionName, (ScriptBlock)block);
@@ -371,6 +362,52 @@ namespace Lexer
             }
 
             return null;
+        }
+
+        private Expression HandleVariableDeclaration(CompilationMeta CompilationMeta)
+        {
+            string Name = Peek().Value;
+            string Type = Previous().Value;
+
+            return VariableDeclaration(CompilationMeta, Name, Type);
+        }
+
+        private Expression VariableDeclaration(CompilationMeta CompilationMeta, string Name, string Type)
+        {
+            Expression result = null;
+            bool isClass = CompilationMeta.IsClass(Type);
+
+            if (IsMatch(TokenTypes.Separator, "["))
+            {
+                if (IsMatch(TokenTypes.Literal))
+                {
+                    Literal size = (Literal)Literal(CompilationMeta);
+                    if (size is IntLiteral intSize)
+                    {
+                        if (!IsMatch(TokenTypes.Separator, "]"))
+                            throw new Exception("Expected array close ']'");
+
+                        Name = Peek().Value;
+                        CompilationMeta.AddVariableArray(Name, Type, intSize.Value, isClass);
+                        result = Expression(CompilationMeta);
+                        ExpressionStack.Push(result);
+                        return result;
+                    }
+                    else
+                    {
+                        throw new Exception($"Expected array size, got '{size.ToString()}'");
+                    }
+                }
+                else
+                {
+                    throw new Exception("Expected int literal for array");
+                }
+            }
+
+            CompilationMeta.AddVariable(Name, Type, isClass);
+            result = Expression(CompilationMeta);
+            ExpressionStack.Push(result);
+            return result;
         }
 
         private Expression Conditional(CompilationMeta CompilationMeta)
@@ -546,7 +583,33 @@ namespace Lexer
                     throw new Exception("Expected array close");
             }
 
-            var FunctionData = CompilationMeta.GetFunction(identifier.Name);
+            VariableMeta? VariableMeta = CompilationMeta.GetVariable(identifier.Name);
+            FunctionMeta? FunctionData = null;
+
+            if (VariableMeta != null && VariableMeta.IsClass())
+            {
+                if (IsMatch(TokenTypes.Separator, "."))
+                {
+                    string accessName = Peek().Value;
+                    Advance();
+
+                    ClassMeta ClassMeta = CompilationMeta.GetClass(identifier.GetVariableType(CompilationMeta));
+
+                    if (Peek().Value == "(")
+                    {
+                        FunctionData = CompilationMeta.GetFunction($"{ClassMeta.Name}.{accessName}");
+                        identifier = new Variable($"{ClassMeta.Name}.{accessName}");
+                    }
+                    else
+                    {
+                        int address = ClassMeta.GetClassDataPosition(accessName);
+                        identifier.SetOffset(new IntLiteral(address));
+                    }
+                }
+            }
+
+            if (FunctionData == null)
+                FunctionData = CompilationMeta.GetFunction(identifier.Name);
 
             if (FunctionData != null)
             {

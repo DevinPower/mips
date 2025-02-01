@@ -344,19 +344,6 @@ namespace Lexer.AST
             }
         }
 
-        public int GetVariableSize(CompilationMeta ScopeMeta)
-        {
-            int ArgumentPosition = ScopeMeta.GetArgumentPosition(Name, true);
-            if (ArgumentPosition == -1)
-            {
-                return ScopeMeta.GetVariable(Name).DataSize;
-            }
-            else
-            {
-                return ScopeMeta.GetArgument(Name, true).DataSize;
-            }
-        }
-
         public void SetOffset(Expression Offset)
         {
             this.Offset = Offset;
@@ -520,6 +507,11 @@ namespace Lexer.AST
         {
             this.Name = Name;
             this.ScriptBlock = ScriptBlock;
+        }
+
+        public void PrependName(string Pre)
+        {
+            Name = Pre + Name;
         }
 
         public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
@@ -791,15 +783,12 @@ namespace Lexer.AST
 
         public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
         {
-            int DataSize = 0;
+            ClassMeta classMeta = ScopeMeta.GetClass(Name);
+            int DataSize = classMeta.GetClassDataSize();
             string EndGuid = System.Guid.NewGuid().ToString().Replace("-", "");
 
             Code.Add($"J {EndGuid}");
             Code.Add($"{Name}.Instantiate:");
-            foreach (Variable v in VariableDefinitions)
-            {
-                DataSize += v.GetVariableSize(ScopedMeta);
-            }
 
             foreach (FunctionDefinition f in FunctionDefinitions)
             {
