@@ -82,11 +82,15 @@ namespace TideScriptREPL
                                 Console.ReadKey();
                             }
 
-                            Computer c = new Computer(1024, 64);
+                            Computer c = new Computer(2048, 64);
                             c.Compile(ic);
 
                             if (Key.Modifiers != ConsoleModifiers.Control)
                                 c.ProcessFull();//StepProgram(c, ic);
+
+                            DrawAlert("Press any key to exit", ConsoleColor.Red);
+
+                            Console.ReadKey();
 
                             c.DumpMemory();
 

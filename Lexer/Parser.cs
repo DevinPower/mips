@@ -75,6 +75,20 @@ namespace Lexer
             return null;
         }
 
+        Expression Class(CompilationMeta CompilationMeta)
+        {
+            string ClassName = Peek().Value;
+            Advance();
+
+            if (!IsMatch(TokenTypes.Separator, "{"))
+                throw new Exception($"Expected class block for {ClassName}");
+
+            var classScope = CompilationMeta.AddSubScope(false);
+            Expression classBody = ScriptBlock(CompilationMeta, classScope);
+
+            return classBody;
+        }
+
         ScriptBlock AddInclude(CompilationMeta CompilationMeta)
         {
             string Contents = string.Join("\n", File.ReadAllLines(Previous().Value));
@@ -201,8 +215,6 @@ namespace Lexer
                                     if (!IsMatch(TokenTypes.Separator, "]"))
                                         throw new Exception("Expected array close ']'");
 
-                                    Console.WriteLine($"Array of size {intSize.Value}");
-
                                     Name = Peek().Value;
                                     CompilationMeta.AddVariableArray(Name, Type, intSize.Value);
                                     result = Expression(CompilationMeta);
@@ -224,6 +236,10 @@ namespace Lexer
                         result = Expression(CompilationMeta);
                         ExpressionStack.Push(result);
                         return result;
+                    }
+                case "class":
+                    {
+                        return Class(CompilationMeta);
                     }
                 case "function":
                     {

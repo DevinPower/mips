@@ -30,7 +30,7 @@ namespace Lexer
 
         readonly string[] Keywords = new[] {
             "if", "return", "while", "function", "else", "elseif",
-            "int", "float", "string", "char", "void"
+            "int", "float", "string", "char", "void", "class"
         };
 
         readonly string[] Separators = new[] {
@@ -83,6 +83,29 @@ namespace Lexer
                     {
                         comment += Contents[i++];
                     }
+
+                    if (Contents[i] == '\n')
+                        i--;
+
+                    LexedCode.Add((comment, TokenTypes.Comment, tokenStart, i));
+
+                    CurrentToken = "";
+                    continue;
+                }
+
+                if (c == '/' && Contents[i + 1] == '*')
+                {
+                    i += 2;
+                    string comment = ForDraw ? "/*" : "";
+                    while (i < Contents.Length)
+                    {
+                        if (Contents[i] == '*' && Contents[i + 1] == '/')
+                            break;
+                        comment += Contents[i++];
+                    }
+
+                    i++;
+                    comment += ForDraw ? "*/" : "";
 
                     if (Contents[i] == '\n')
                         i--;

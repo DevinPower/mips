@@ -8,7 +8,7 @@ namespace Lexer.AST
     {
         bool[] aRegisters = new bool[4];
         bool[] tRegisters = new bool[8];
-        int spaceSum = 1;
+        int spaceSum = 0;
 
         public FunctionCallRegisterState(FunctionCall SubFunction, CompilationMeta MetaScope)
         {
@@ -32,7 +32,7 @@ namespace Lexer.AST
         public void SaveState(List<string> Code)
         {
             int backwardsCount = spaceSum;
-            Code.Add($"Ori $t9, $zero, {backwardsCount}");
+            Code.Add($"Ori $t9, $zero, {spaceSum + 1}");
             Code.Add($"Sub $sp, $sp, $t9");
             for (int i = 0; i < 4; i++)
             {
@@ -66,7 +66,7 @@ namespace Lexer.AST
 
             Code.Add($"LB $ra, {count--}($sp)");
 
-            Code.Add($"Ori $t9, $zero, {spaceSum}");
+            Code.Add($"Ori $t9, $zero, {spaceSum + 1}");
             Code.Add($"Add $sp, $sp, $t9");
         }
     }
@@ -290,7 +290,17 @@ namespace Lexer.AST
         {
             RegisterResult ResultRegister = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
 
-            Code.Add($"La {ResultRegister}, {Name}(0)");
+            VariableMeta MetaData = ScopeMeta.GetVariable(Name);
+
+            if (!MetaData.IsLocal)
+            {
+                Code.Add($"La {ResultRegister}, {Name}(0)");
+            }
+            else
+            {
+                Code.Add($"Move {ResultRegister}, $sp");
+                Code.Add($"Addi {ResultRegister}, {ResultRegister}, {MetaData.GetStackOffset()}");
+            }
 
             return ResultRegister;
         }
@@ -356,6 +366,8 @@ namespace Lexer.AST
 
             if (ArgumentPosition == -1) 
             {
+                VariableMeta MetaData = ScopeMeta.GetVariable(Name);
+                bool IsLocal = MetaData.IsLocal;
                 RegisterResult ResultRegister = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
 
                 string offsetRegister = "0";
@@ -370,8 +382,13 @@ namespace Lexer.AST
                     {
                         RegisterResult StringAddress = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
 
-                        Code.Add($"La {StringAddress}, {Name}(0)");
+                        if (!IsLocal)
+                            Code.Add($"La {StringAddress}, {Name}(0)");
+                        else
+                            Code.Add($"Addi {StringAddress}, $sp, {MetaData.GetStackOffset()}");
+
                         Code.Add($"Add {StringAddress}, {StringAddress}, {offsetRegister}");
+
                         Code.Add($"LB {ResultRegister}, 0({StringAddress})");
 
                         ScopeMeta.FreeTempRegister(offsetResult);
@@ -382,11 +399,16 @@ namespace Lexer.AST
 
                 ScopeMeta.FreeTempRegister(offsetResult);
 
-                Code.Add($"LB {ResultRegister}, {Name}({offsetRegister})");
+                if (!IsLocal)
+                    Code.Add($"LB {ResultRegister}, {Name}({offsetRegister})");
+                else
+                    Code.Add($"LB {ResultRegister}, {MetaData.GetStackOffset()}($sp)");
+
                 return ResultRegister;
             }
             else
             {
+                //TODO: Should arguments be local..?
                 if (Offset != null)
                 {
                     RegisterResult offsetResult = Offset.GenerateCode(ScopeMeta, Code);
@@ -516,6 +538,9 @@ namespace Lexer.AST
             var resultRegister = ReturnValue.GenerateCode(ScopeMeta, Code);
 
             Code.Add($"Move $v0, {resultRegister}");
+
+            ScopeMeta.ExitScope(Code);
+
             Code.Add($"Jr $ra");
 
             ScopeMeta.FreeTempRegister(resultRegister);
@@ -587,7 +612,13 @@ namespace Lexer.AST
             Code.Add(GetCommand(resultRegister, leftRegister, rightRegister, asfloat));
 
             if (SelfAssign)
-                Code.Add($"SB {leftRegister}, {((Variable)LHS).Name}(0)");
+            {
+                VariableMeta LHSMeta = ScopeMeta.GetVariable(((Variable)LHS).Name);
+                if (!LHSMeta.IsLocal)
+                    Code.Add($"SB {leftRegister}, {((Variable)LHS).Name}(0)");
+                else
+                    Code.Add($"SB {leftRegister}, {LHSMeta.GetStackOffset()}($sp)");
+            }
 
             if (Type == OperatorTypes.MULTIPLY || Type == OperatorTypes.DIVIDE
                 || Type == OperatorTypes.MULTIPLYASSIGN || Type == OperatorTypes.DIVIDEASSIGN)
@@ -627,10 +658,23 @@ namespace Lexer.AST
             if (RHS.InferType(ScopeMeta) == "void")
                 throw new Exception($"Cannot assign void to '{Variable.Name}'");
 
+            VariableMeta MetaData = ScopeMeta.GetVariable(Variable.Name);
+
+            RegisterResult offsetResult = null;
+
             if (Variable.Offset != null)
             {
-                RegisterResult offsetResult = Variable.Offset.GenerateCode(ScopeMeta, Code);
-                offsetRegister = offsetResult.ToString();
+                offsetResult = Variable.Offset.GenerateCode(ScopeMeta, Code);
+                if (MetaData.IsLocal)
+                {
+                    Code.Add($"Add {offsetResult}, {offsetResult}, $sp");
+                    Code.Add($"Addi {offsetResult}, {offsetResult}, {MetaData.GetStackOffset()}");
+                }
+                else
+                {
+                    offsetRegister = offsetResult.ToString();
+                }
+
                 ScopeMeta.FreeTempRegister(offsetResult);
             }
 
@@ -640,7 +684,21 @@ namespace Lexer.AST
             if (RHS.InferType(ScopeMeta) == "float" && Variable.InferType(ScopeMeta) == "int")
                 LeftRegister.ConvertToInt(ScopeMeta, Code);
 
-            Code.Add($"SB {LeftRegister}, {Variable.Name}({offsetRegister})");
+            if (!MetaData.IsLocal)
+            {
+                Code.Add($"SB {LeftRegister}, {Variable.Name}({offsetRegister})");
+            }
+            else
+            {
+                if (Variable.Offset == null)
+                {
+                    Code.Add($"SB {LeftRegister}, {MetaData.GetStackOffset()}($sp)");
+                }
+                else
+                {
+                    Code.Add($"SB {LeftRegister}, 0({offsetResult})");
+                }
+            }
 
             ScopeMeta.FreeTempRegister(LeftRegister);
 
@@ -681,10 +739,14 @@ namespace Lexer.AST
 
         public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
         {
+            ScopedMeta.EnterScope(Code);
+
             foreach(Expression expression in Expressions)
             {
                 _usedRegisters.Add(expression.GenerateCode(ScopedMeta, Code));
             }
+
+            ScopedMeta.ExitScope(Code);
 
             return null;
         }

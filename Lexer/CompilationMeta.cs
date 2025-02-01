@@ -8,6 +8,9 @@ namespace Lexer
         public string Type { get; set; }
         public int DataSize { get; set; } = 1;
         public bool IsArray { get; set; }
+        public bool IsLocal { get; private set; }
+
+        int? _stackOffset = null;
 
         public VariableMeta(string Name, string Type)
         {
@@ -36,12 +39,28 @@ namespace Lexer
             }
 
             throw new Exception($";error generating data for Type {Type} on variable {Name}");
+        }
 
+        public int GetStackOffset()
+        {
+            if (_stackOffset == null)
+                throw new Exception($"Variable {Name} not yet allocated on stack!");
+
+            return _stackOffset.Value;
         }
 
         public string GenerateData()
         {
             return $"{Name}: {HandleType()}";
+        }
+
+        public void GenerateStack(CompilationMeta CompilationMeta, List<string> Code)
+        {
+            IsLocal = true;
+
+            Code.Add($"Ori $t9, $zero, {DataSize}");
+            Code.Add($"Sub $sp, $sp, $t9");
+            _stackOffset = CompilationMeta.GetAndOffsetStack(DataSize);
         }
     }
 
@@ -69,6 +88,7 @@ namespace Lexer
         public bool[] TempRegisters = new bool[8];
         protected List<CompilationMeta> _childScopes = new List<CompilationMeta>();
         protected VariableMeta[] Arguments = new VariableMeta[4];
+        protected int StackOffset = 0;
 
         public CompilationMeta(CompilationMeta Parent, bool CopyTempRegisters)
         {
@@ -80,6 +100,12 @@ namespace Lexer
                     TempRegisters[i] = _Parent.TempRegisters[i];
                 }
             }
+        }
+
+        public int GetAndOffsetStack(int DataSize)
+        {
+            StackOffset += DataSize;
+            return StackOffset;
         }
 
         public void MergeExternal(CompilationMeta ExternalMeta)
@@ -243,9 +269,26 @@ namespace Lexer
             {
                 Code.Insert(InsertCount++, variable.GenerateData());
             }
+        }
 
-            foreach(var child in _childScopes)
-                child.GenerateVariableCode(Code, ref InsertCount);
+        public void EnterScope(List<string> Code)
+        {
+            if (_Parent == null)
+                return;
+
+            foreach(VariableMeta variable in Variables)
+            {
+                variable.GenerateStack(this, Code);
+            }
+        }
+
+        public void ExitScope(List<string> Code)
+        {
+            if (StackOffset == 0)
+                return;
+
+            Code.Add($"Ori $t9, $zero, {StackOffset}");
+            Code.Add($"Add $sp, $sp, $t9");
         }
 
         protected void GenerateStringConstantCode(List<string> Code, ref int InsertCount)
