@@ -303,19 +303,20 @@ namespace Lexer
                         Advance();
                         List<(string type, string name, bool isArray, bool isClass)> Arguments = GetArguments(CompilationMeta);
 
-                        ConsumeWhitespaceAndComments();
-
-                        if (!IsMatch(TokenTypes.Separator, "{"))
-                            throw new Exception("Expected script block");
-
-                        CompilationMeta subScope = CompilationMeta.AddSubScope(false);
-                        Expression block = ScriptBlock(CompilationMeta, subScope);
-
                         CompilationMeta.AddFunction(FunctionName, ReturnType, Arguments.Select((x) => x.type).ToList());
+                        CompilationMeta subScope = CompilationMeta.AddSubScope(false);
+
                         foreach (var argument in Arguments)
                         {
                             subScope.AddArgument(argument.name, argument.type, argument.isArray, argument.isClass);
                         }
+
+                        ConsumeWhitespaceAndComments();
+
+                        if (!IsMatch(TokenTypes.Separator, "{"))
+                            throw new Exception("Expected script block");
+                        
+                        Expression block = ScriptBlock(CompilationMeta, subScope);
 
                         return new FunctionDefinition(FunctionName, (ScriptBlock)block);
                     }
@@ -584,9 +585,12 @@ namespace Lexer
             }
 
             VariableMeta? VariableMeta = CompilationMeta.GetVariable(identifier.Name);
+            if (VariableMeta == null)
+                VariableMeta = CompilationMeta.GetArgument(identifier.Name, false);
+
             FunctionMeta? FunctionData = null;
 
-            if (VariableMeta != null && VariableMeta.IsClass())
+            if (VariableMeta != null && CompilationMeta.IsClass(VariableMeta.Type))
             {
                 if (IsMatch(TokenTypes.Separator, "."))
                 {
