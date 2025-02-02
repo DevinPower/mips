@@ -99,7 +99,7 @@ namespace Lexer
 
         public int GetClassDataPosition(string Property)
         {
-            int offset = 0;
+            int offset = 1;
             foreach(VariableMeta Meta in Properties)
             {
                 if (Meta.Name == Property)

@@ -349,14 +349,16 @@ namespace Lexer.AST
             this.Offset = Offset;
         }
 
-        bool VariableIsArrayOrString(CompilationMeta ScopeMeta, string VariableName)
+        bool VariableIsPointer(CompilationMeta ScopeMeta, string VariableName)
         {
-            return ScopeMeta.GetVariable(Name).Type == "string" || ScopeMeta.GetVariable(Name).IsArray;
+            return ScopeMeta.GetVariable(Name).Type == "string" ||
+                ScopeMeta.GetVariable(Name).IsArray;
         }
 
-        bool ArgumentIsArrayOrString(CompilationMeta ScopeMeta, string VariableName, bool CanRecurse)
+        bool ArgumentIsPointer(CompilationMeta ScopeMeta, string VariableName, bool CanRecurse)
         {
-            return ScopeMeta.GetArgument(Name, CanRecurse).Type == "string" || ScopeMeta.GetArgument(Name, CanRecurse).IsArray;
+            return ScopeMeta.GetArgument(Name, CanRecurse).Type == "string" ||
+                ScopeMeta.GetArgument(Name, CanRecurse).IsArray;
         }
 
         //TODO: Can we refactor?
@@ -378,7 +380,23 @@ namespace Lexer.AST
                     offsetResult = Offset.GenerateCode(ScopeMeta, Code);
                     offsetRegister = offsetResult.ToString();
 
-                    if (VariableIsArrayOrString(ScopeMeta, Name))
+                    if (ScopeMeta.GetVariable(Name).IsClass())
+                    {
+                        RegisterResult StringAddress = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
+
+                        if (!IsLocal)
+                            Code.Add($"LB {StringAddress}, {Name}(0)");
+
+                        Code.Add($"Add {StringAddress}, {StringAddress}, {offsetRegister}");
+
+                        Code.Add($"LB {ResultRegister}, 0({StringAddress})");
+
+                        ScopeMeta.FreeTempRegister(offsetResult);
+                        ScopeMeta.FreeTempRegister(StringAddress);
+                        return ResultRegister;
+                    }
+
+                    if (VariableIsPointer(ScopeMeta, Name))
                     {
                         RegisterResult StringAddress = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
 
@@ -414,7 +432,7 @@ namespace Lexer.AST
                     RegisterResult offsetResult = Offset.GenerateCode(ScopeMeta, Code);
                     RegisterResult resultRegister = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
 
-                    if (ArgumentIsArrayOrString(ScopeMeta, Name, true))
+                    if (ArgumentIsPointer(ScopeMeta, Name, true))
                     {
                         RegisterResult ResultRegister = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
                         RegisterResult StringAddress = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
@@ -679,8 +697,6 @@ namespace Lexer.AST
                 {
                     offsetRegister = offsetResult.ToString();
                 }
-
-                ScopeMeta.FreeTempRegister(offsetResult);
             }
 
             if (RHS.InferType(ScopeMeta) == "int" && Variable.InferType(ScopeMeta) == "float")
@@ -688,6 +704,39 @@ namespace Lexer.AST
 
             if (RHS.InferType(ScopeMeta) == "float" && Variable.InferType(ScopeMeta) == "int")
                 LeftRegister.ConvertToInt(ScopeMeta, Code);
+
+            if (MetaData.IsClass() && Variable.Offset != null)
+            {
+                if (!MetaData.IsLocal)
+                {
+                    RegisterResult addressTemp = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
+                    Code.Add($"LB {addressTemp}, {Variable.Name}(0)");
+                    Code.Add($"Add {offsetResult}, {offsetResult}, {addressTemp}");
+
+                    Code.Add($"SB {LeftRegister}, 0({offsetResult})");
+
+                    ScopeMeta.FreeTempRegister(LeftRegister);
+                    ScopeMeta.FreeTempRegister(addressTemp);
+                    ScopeMeta.FreeTempRegister(offsetResult);
+
+                    return null;
+                }
+                else
+                {
+                    RegisterResult addressTemp = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
+
+                    Code.Add($"LB {addressTemp}, {MetaData.GetStackOffset()}($sp)");
+                    Code.Add($"Add {offsetResult}, {offsetResult}, {addressTemp}");
+
+                    Code.Add($"SB {LeftRegister}, 0({offsetResult})");
+
+                    ScopeMeta.FreeTempRegister(LeftRegister);
+                    ScopeMeta.FreeTempRegister(addressTemp);
+                    ScopeMeta.FreeTempRegister(offsetResult);
+
+                    return null;
+                }
+            }
 
             if (!MetaData.IsLocal)
             {
@@ -706,6 +755,7 @@ namespace Lexer.AST
             }
 
             ScopeMeta.FreeTempRegister(LeftRegister);
+            ScopeMeta.FreeTempRegister(offsetResult);
 
             return null;
         }
