@@ -21,12 +21,12 @@ namespace Lexer
             _IsClass = IsClass;
         }
 
-        public VariableMeta(string Name, string Type, int ArraySize, bool IsClass)
+        public VariableMeta(string Name, string Type, int ArraySize, bool IsArray, bool IsClass)
         {
             this.Name = Name;
             this.Type = Type;
             this.DataSize = ArraySize;
-            this.IsArray = true;
+            this.IsArray = IsArray;
             _IsClass = IsClass;
         }
 
@@ -312,7 +312,7 @@ namespace Lexer
 
         public void AddVariableArray(string Variable, string Type, int Size, bool IsClass)
         {
-            Variables.Add(new VariableMeta(Variable, Type, Size, IsClass));
+            Variables.Add(new VariableMeta(Variable, Type, Size, true, IsClass));
         }
 
         public void AddArgument(string Name, string Type, bool IsArray, bool IsClass)
@@ -321,7 +321,7 @@ namespace Lexer
             {
                 if (Arguments[i] == null)
                 {
-                    Arguments[i] = new VariableMeta(Name, Type, IsArray ? 2 : 0, IsClass);
+                    Arguments[i] = new VariableMeta(Name, Type, IsArray ? 2 : 0, IsArray, IsClass);
                     return;
                 }
             }

@@ -315,6 +315,7 @@ namespace Lexer.AST
     {
         public string Name { get; private set; }
         public Expression Offset { get; private set; }
+        public Expression PropertyOffset { get; private set; }
 
         public Variable(string Name)
         {
@@ -349,6 +350,11 @@ namespace Lexer.AST
             this.Offset = Offset;
         }
 
+        public void SetPropertyOffset(Expression Offset)
+        {
+            this.PropertyOffset = Offset;
+        }
+
         public RegisterResult GetAddress(CompilationMeta ScopeMeta, List<string> Code)
         {
             bool IsPointer = false;
@@ -368,6 +374,15 @@ namespace Lexer.AST
                     if (IsClass && !VariableIsPointer(ScopeMeta) && Offset != null)
                     {
                         Code.Add($"LB {InitialAddress}, {Name}(0)");
+                        
+                        return InitialAddress;
+                    }
+
+                    if (IsClass && VariableIsPointer(ScopeMeta) && Offset != null && PropertyOffset != null)
+                    {
+                        RegisterResult offsetValue = Offset.GenerateCode(ScopeMeta, Code);
+                        Code.Add($"LB {InitialAddress}, {Name}({offsetValue})");
+                        ScopeMeta.FreeTempRegister(offsetValue);
                         return InitialAddress;
                     }
 
@@ -381,6 +396,18 @@ namespace Lexer.AST
                         
                         return InitialAddress;
                     }
+
+                    if (IsClass && VariableIsPointer(ScopeMeta) && Offset != null && PropertyOffset != null)
+                    {
+                        RegisterResult offsetValue = Offset.GenerateCode(ScopeMeta, Code);
+                        Code.Add($"LB {InitialAddress}, {MetaData.GetStackOffset()}($sp)");
+                        Code.Add($"Add {InitialAddress}, {InitialAddress}, {offsetValue}");
+                        Code.Add($"LB {InitialAddress}, 0({InitialAddress})");
+
+                        ScopeMeta.FreeTempRegister(offsetValue);
+                        return InitialAddress;
+                    }
+
                     Code.Add($"Addi {InitialAddress}, $sp, {MetaData.GetStackOffset()}");
                 }
 
@@ -392,13 +419,47 @@ namespace Lexer.AST
                 IsLocal = MetaData.IsLocal;
                 IsClass = MetaData.IsClass();
 
-                if ((IsClass || ArgumentIsPointer(ScopeMeta, true)) && !IsLocal && Offset != null)
+                if (!IsLocal)
                 {
-                    Code.Add($"LB {InitialAddress}, {3 + ArgumentPosition}($zero)");
-                    return InitialAddress;
+                    if (IsClass && !ArgumentIsPointer(ScopeMeta, true) && Offset != null)
+                    {
+                        Code.Add($"LB {InitialAddress}, {3 + ArgumentPosition}($zero)");
+                        return InitialAddress;
+                    }
+
+                    if (IsClass && ArgumentIsPointer(ScopeMeta, true) && Offset != null && PropertyOffset != null)
+                    {
+                        RegisterResult offsetValue = Offset.GenerateCode(ScopeMeta, Code);
+                        
+                        Code.Add($"LB {InitialAddress}, {3 + ArgumentPosition}($zero)");
+                        Code.Add($"LB {InitialAddress}, 0({InitialAddress})");
+                        Code.Add($"Add {InitialAddress}, {InitialAddress}, {offsetValue}");
+
+                        ScopeMeta.FreeTempRegister(offsetValue);
+                        return InitialAddress;
+                    }
+                }
+                else
+                {
+                    if (IsClass && !ArgumentIsPointer(ScopeMeta, true) && Offset != null)
+                    {
+                        Code.Add($"LB {InitialAddress}, {3 + ArgumentPosition}($zero)");
+                        Code.Add($"LB {InitialAddress}, 0({InitialAddress})");
+                        return InitialAddress;
+                    }
+
+                    if (IsClass && ArgumentIsPointer(ScopeMeta, true) && Offset != null && PropertyOffset != null)
+                    {
+                        RegisterResult offsetValue = Offset.GenerateCode(ScopeMeta, Code);
+                        Code.Add($"LB {InitialAddress}, {3 + ArgumentPosition}($zero)");
+                        Code.Add($"Add {InitialAddress}, {InitialAddress}, {offsetValue}");
+                        Code.Add($"LB {InitialAddress}, 0({InitialAddress})");
+                        ScopeMeta.FreeTempRegister(offsetValue);
+                        return InitialAddress;
+                    }
                 }
 
-                Code.Add($"Li {InitialAddress}, {3 + ArgumentPosition}");
+                Code.Add($"Move {InitialAddress}, $a{ArgumentPosition}");
                 return InitialAddress;
             }
         }
@@ -407,11 +468,14 @@ namespace Lexer.AST
         {
             RegisterResult addressRegister = GetAddress(ScopeMeta, Code);
 
-            if (Offset != null)
+            if (Offset != null || PropertyOffset != null)
             {
-                RegisterResult OffsetRegister = Offset.GenerateCode(ScopeMeta, Code);
+                RegisterResult OffsetRegister = PropertyOffset == null ? 
+                    Offset.GenerateCode(ScopeMeta, Code) :
+                    PropertyOffset.GenerateCode(ScopeMeta, Code);
 
                 Code.Add($"Add {addressRegister}, {addressRegister}, {OffsetRegister}");
+
                 ScopeMeta.FreeTempRegister(OffsetRegister);
             }
 
@@ -423,11 +487,14 @@ namespace Lexer.AST
         {
             RegisterResult addressRegister = GetAddress(ScopeMeta, Code);
 
-            if (Offset != null)
+            if (Offset != null || PropertyOffset != null)
             {
-                RegisterResult OffsetRegister = Offset.GenerateCode(ScopeMeta, Code);
+                RegisterResult OffsetRegister = PropertyOffset == null ?
+                    Offset.GenerateCode(ScopeMeta, Code) :
+                    PropertyOffset.GenerateCode(ScopeMeta, Code);
 
                 Code.Add($"Add {addressRegister}, {addressRegister}, {OffsetRegister}");
+
                 ScopeMeta.FreeTempRegister(OffsetRegister);
             }
 

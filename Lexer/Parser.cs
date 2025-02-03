@@ -607,7 +607,7 @@ namespace Lexer
                     else
                     {
                         int address = ClassMeta.GetClassDataPosition(accessName);
-                        identifier.SetOffset(new IntLiteral(address));
+                        identifier.SetPropertyOffset(new IntLiteral(address));
                     }
                 }
             }
