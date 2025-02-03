@@ -365,7 +365,7 @@ namespace Lexer.AST
 
                 if (!IsLocal)
                 {
-                    if ((IsClass || VariableIsPointer(ScopeMeta)) && Offset != null)
+                    if (IsClass && !VariableIsPointer(ScopeMeta) && Offset != null)
                     {
                         Code.Add($"LB {InitialAddress}, {Name}(0)");
                         return InitialAddress;
@@ -375,7 +375,7 @@ namespace Lexer.AST
                 }
                 else
                 {
-                    if ((IsClass || VariableIsPointer(ScopeMeta)) && Offset != null)
+                    if (IsClass && !VariableIsPointer(ScopeMeta) && Offset != null)
                     {
                         Code.Add($"LB {InitialAddress}, {MetaData.GetStackOffset()}($sp)");
                         
@@ -392,7 +392,7 @@ namespace Lexer.AST
                 IsLocal = MetaData.IsLocal;
                 IsClass = MetaData.IsClass();
 
-                if (IsClass || (ArgumentIsPointer(ScopeMeta, true) && !IsLocal && Offset != null))
+                if ((IsClass || ArgumentIsPointer(ScopeMeta, true)) && !IsLocal && Offset != null)
                 {
                     Code.Add($"LB {InitialAddress}, {3 + ArgumentPosition}($zero)");
                     return InitialAddress;
