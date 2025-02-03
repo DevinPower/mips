@@ -623,7 +623,23 @@ namespace Lexer
 
                 while (!IsMatch(TokenTypes.Separator, ")"))
                 {
-                    Arguments.Add(Expression(CompilationMeta));
+                    var result = Expression(CompilationMeta);
+
+                    if (result is Variable v)
+                    {
+                        if (CompilationMeta.GetVariable(v.Name) != null && !v.HasOffset() && CompilationMeta.GetVariable(v.Name).IsClass())
+                        {
+                            Arguments.Add(new AddressPointer(v));
+                        }
+                        else
+                        {
+                            Arguments.Add(result);
+                        }
+                    }
+                    else
+                    {
+                        Arguments.Add(result);
+                    }
 
                     if (!IsMatch(TokenTypes.Separator, ",") && Peek().Value != ")")
                         throw new Exception("Argument format issue");
@@ -641,7 +657,7 @@ namespace Lexer
 
             if (CompilationMeta.GetVariable(identifier.Name) != null && !identifier.HasOffset() && CompilationMeta.GetVariable(identifier.Name).IsArray)
             {
-                return new AddressPointer(identifier.Name);
+                return new AddressPointer(identifier);
             }
 
             return identifier;

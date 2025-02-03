@@ -279,30 +279,16 @@ namespace Lexer.AST
 
     public class AddressPointer : Expression
     {
-        public string Name { get; private set; }
+        public  Variable Variable { get; private set; }
 
-        public AddressPointer(string Name)
+        public AddressPointer(Variable Variable)
         {
-            this.Name = Name;
+            this.Variable = Variable;
         }
 
         public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
         {
-            RegisterResult ResultRegister = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
-
-            VariableMeta MetaData = ScopeMeta.GetVariable(Name);
-
-            if (!MetaData.IsLocal)
-            {
-                Code.Add($"La {ResultRegister}, {Name}(0)");
-            }
-            else
-            {
-                Code.Add($"Move {ResultRegister}, $sp");
-                Code.Add($"Addi {ResultRegister}, {ResultRegister}, {MetaData.GetStackOffset()}");
-            }
-
-            return ResultRegister;
+            return Variable.GetAddress(ScopeMeta, Code);
         }
 
         public override string InferType(CompilationMeta ScopeMeta)
