@@ -140,13 +140,6 @@ namespace Lexer
                 return classScope.GetVariable(x.Name);
             }).ToList();
 
-            foreach(VariableMeta variableMeta in variablesMeta)
-            {
-                variableMeta.IsHeapAllocated = true;
-            }
-
-            //TODO: This could be represented more clearly
-
             functionDefinitions.ForEach((x) => {
                 string NewName = $"{ClassName}." + classScope.GetFunction(x.Name.Split('.')[1]).Name;
                 classScope.GetFunction(x.Name.Split('.')[1]).Name = NewName;
@@ -602,12 +595,15 @@ namespace Lexer
                     if (Peek().Value == "(")
                     {
                         FunctionData = CompilationMeta.GetFunction($"{ClassMeta.Name}.{accessName}");
+                        Expression originalOffset = identifier.Offset;
                         identifier = new Variable($"{ClassMeta.Name}.{accessName}");
+                        identifier.SetOffset(originalOffset);
                     }
                     else
                     {
                         int address = ClassMeta.GetClassDataPosition(accessName);
                         identifier.SetPropertyOffset(new IntLiteral(address));
+                        return identifier;
                     }
                 }
             }

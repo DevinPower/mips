@@ -12,7 +12,6 @@ namespace Lexer.AST
 
         public FunctionCallRegisterState(FunctionCall SubFunction, CompilationMeta MetaScope)
         {
-
             for (int i = 0; i < SubFunction.Arguments.Count; i++)
             {
                 aRegisters[i] = true;
@@ -31,8 +30,8 @@ namespace Lexer.AST
 
         public void SaveState(List<string> Code)
         {
-            int backwardsCount = spaceSum;
-            Code.Add($"Ori $t9, $zero, {spaceSum + 1}");
+            int backwardsCount = spaceSum + 1;
+            Code.Add($"Ori $t9, $zero, {backwardsCount}");
             Code.Add($"Sub $sp, $sp, $t9");
             for (int i = 0; i < 4; i++)
             {
@@ -51,7 +50,7 @@ namespace Lexer.AST
 
         public void LoadState(List<string> Code)
         {
-            int count = spaceSum;
+            int count = spaceSum + 1;
             for (int i = 0; i < 4; i++)
             {
                 if (aRegisters[i])
@@ -67,6 +66,42 @@ namespace Lexer.AST
             Code.Add($"LB $ra, {count--}($sp)");
 
             Code.Add($"Ori $t9, $zero, {spaceSum + 1}");
+            Code.Add($"Add $sp, $sp, $t9");
+        }
+    }
+
+    public class GenericRegisterState
+    {
+        string[] Registers;
+        int spaceSum = 0;
+
+        public GenericRegisterState(string[] Registers, CompilationMeta MetaScope)
+        {
+            this.Registers = Registers;
+            spaceSum += Registers.Length;
+        }
+
+        public void SaveState(List<string> Code)
+        {
+            int backwardsCount = spaceSum;
+            Code.Add($"Ori $t9, $zero, {spaceSum}");
+            Code.Add($"Sub $sp, $sp, $t9");
+
+            foreach(string register in Registers)
+            {
+                Code.Add($"SB {register}, {backwardsCount--}($sp)");
+            }
+        }
+
+        public void LoadState(List<string> Code)
+        {
+            int count = spaceSum;
+            foreach (string register in Registers)
+            {
+                Code.Add($"SB {register}, {count--}($sp)");
+            }
+
+            Code.Add($"Ori $t9, $zero, {spaceSum}");
             Code.Add($"Add $sp, $sp, $t9");
         }
     }
@@ -310,7 +345,7 @@ namespace Lexer.AST
 
         public bool HasOffset()
         {
-            return Offset != null;
+            return Offset != null || PropertyOffset != null;
         }
 
         public RegisterResult GetOffsetRegister(CompilationMeta ScopeMeta, List<string> Code)
@@ -359,7 +394,8 @@ namespace Lexer.AST
                 {
                     if (IsClass && !VariableIsPointer(ScopeMeta) && Offset != null)
                     {
-                        Code.Add($"LB {InitialAddress}, {Name}(0)");
+                        RegisterResult offsetValue = Offset.GenerateCode(ScopeMeta, Code);
+                        Code.Add($"LB {InitialAddress}, {Name}({offsetValue})");
                         
                         return InitialAddress;
                     }
@@ -368,11 +404,23 @@ namespace Lexer.AST
                     {
                         RegisterResult offsetValue = Offset.GenerateCode(ScopeMeta, Code);
                         Code.Add($"LB {InitialAddress}, {Name}({offsetValue})");
+                        Code.Add($"LB {InitialAddress}, 0({InitialAddress})");
                         ScopeMeta.FreeTempRegister(offsetValue);
                         return InitialAddress;
                     }
 
-                    Code.Add($"La {InitialAddress}, {Name}(0)");
+                    if (IsClass && !VariableIsPointer(ScopeMeta) && Offset == null && PropertyOffset != null)
+                    {
+                        RegisterResult offsetValue = PropertyOffset.GenerateCode(ScopeMeta, Code);
+                        Code.Add($"LB {InitialAddress}, {Name}(0)");
+                        Code.Add($"Add {InitialAddress}, {InitialAddress}, {offsetValue}");
+                        ScopeMeta.FreeTempRegister(offsetValue);
+                        return InitialAddress;
+                    }
+
+                    Code.Add($"Li {InitialAddress}, {Name}");
+
+                    return InitialAddress;
                 }
                 else
                 {
@@ -453,37 +501,14 @@ namespace Lexer.AST
         public RegisterResult GetValue(CompilationMeta ScopeMeta, List<string> Code)
         {
             RegisterResult addressRegister = GetAddress(ScopeMeta, Code);
-
-            if (Offset != null || PropertyOffset != null)
-            {
-                RegisterResult OffsetRegister = PropertyOffset == null ? 
-                    Offset.GenerateCode(ScopeMeta, Code) :
-                    PropertyOffset.GenerateCode(ScopeMeta, Code);
-
-                Code.Add($"Add {addressRegister}, {addressRegister}, {OffsetRegister}");
-
-                ScopeMeta.FreeTempRegister(OffsetRegister);
-            }
-
             Code.Add($"LB {addressRegister}, 0({addressRegister})");
+
             return addressRegister;
         }
 
         public RegisterResult SetValue(CompilationMeta ScopeMeta, List<string> Code, RegisterResult RHSRegister)
         {
             RegisterResult addressRegister = GetAddress(ScopeMeta, Code);
-
-            if (Offset != null || PropertyOffset != null)
-            {
-                RegisterResult OffsetRegister = PropertyOffset == null ?
-                    Offset.GenerateCode(ScopeMeta, Code) :
-                    PropertyOffset.GenerateCode(ScopeMeta, Code);
-
-                Code.Add($"Add {addressRegister}, {addressRegister}, {OffsetRegister}");
-
-                ScopeMeta.FreeTempRegister(OffsetRegister);
-            }
-
             Code.Add($"SB {RHSRegister}, 0({addressRegister})");
 
             return addressRegister;

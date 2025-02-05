@@ -69,6 +69,7 @@ namespace Lexer
         public void GenerateStack(CompilationMeta CompilationMeta, List<string> Code)
         {
             IsLocal = true;
+            IsHeapAllocated = true;
 
             Code.Add($"Ori $t9, $zero, {DataSize}");
             Code.Add($"Sub $sp, $sp, $t9");
