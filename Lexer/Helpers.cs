@@ -64,5 +64,16 @@ namespace Lexer
 
             registerState.LoadState(Code);
         }
+
+        public static void DebugBreak(CompilationMeta CompilationMeta, List<string> Code)
+        {
+            GenericRegisterState registerState = new GenericRegisterState(new string[] { "$v0" }, CompilationMeta);
+            registerState.SaveState(Code);
+
+            Code.Add($"Ori $v0, $zero, 19");
+            Code.Add($"Syscall");
+
+            registerState.LoadState(Code);
+        }
     }
 }

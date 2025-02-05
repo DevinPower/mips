@@ -323,7 +323,7 @@ namespace Lexer.AST
 
         public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
         {
-            return Variable.GetAddress(ScopeMeta, Code);
+            return Variable.GetAddress(ScopeMeta, Code, false);
         }
 
         public override string InferType(CompilationMeta ScopeMeta)
@@ -376,7 +376,7 @@ namespace Lexer.AST
             this.PropertyOffset = Offset;
         }
 
-        public RegisterResult GetAddress(CompilationMeta ScopeMeta, List<string> Code)
+        public RegisterResult GetAddress(CompilationMeta ScopeMeta, List<string> Code, bool ForSetting)
         {
             bool IsPointer = false;
             bool IsLocal = false;
@@ -392,19 +392,27 @@ namespace Lexer.AST
 
                 if (!IsLocal)
                 {
-                    if (IsClass && !VariableIsPointer(ScopeMeta) && Offset != null)
-                    {
-                        RegisterResult offsetValue = Offset.GenerateCode(ScopeMeta, Code);
-                        Code.Add($"LB {InitialAddress}, {Name}({offsetValue})");
-                        
-                        return InitialAddress;
-                    }
-
                     if (IsClass && VariableIsPointer(ScopeMeta) && Offset != null && PropertyOffset != null)
                     {
                         RegisterResult offsetValue = Offset.GenerateCode(ScopeMeta, Code);
-                        Code.Add($"LB {InitialAddress}, {Name}({offsetValue})");
+                        Code.Add($"La {InitialAddress}, {Name}(0)");
+                        Code.Add($"Add {InitialAddress}, {InitialAddress}, {offsetValue}");
                         Code.Add($"LB {InitialAddress}, 0({InitialAddress})");
+
+                        RegisterResult propertyOffsetValue = PropertyOffset.GenerateCode(ScopeMeta, Code);
+
+                        Code.Add($"Add {InitialAddress}, {InitialAddress}, {propertyOffsetValue}");
+
+                        ScopeMeta.FreeTempRegister(offsetValue);
+                        ScopeMeta.FreeTempRegister(propertyOffsetValue);
+                        return InitialAddress;
+                    }
+
+                    if (IsClass && VariableIsPointer(ScopeMeta) && Offset != null)
+                    {
+                        RegisterResult offsetValue = Offset.GenerateCode(ScopeMeta, Code);
+                        Code.Add($"La {InitialAddress}, {Name}(0)");
+                        Code.Add($"Add {InitialAddress}, {InitialAddress}, {offsetValue}");
                         ScopeMeta.FreeTempRegister(offsetValue);
                         return InitialAddress;
                     }
@@ -415,6 +423,25 @@ namespace Lexer.AST
                         Code.Add($"LB {InitialAddress}, {Name}(0)");
                         Code.Add($"Add {InitialAddress}, {InitialAddress}, {offsetValue}");
                         ScopeMeta.FreeTempRegister(offsetValue);
+                        return InitialAddress;
+                    }
+
+                    if (IsClass && VariableIsPointer(ScopeMeta) && Offset == null)
+                    {
+                        Code.Add($"La {InitialAddress}, {Name}(0)");
+
+                        return InitialAddress;
+                    }
+
+                    if (IsClass && !VariableIsPointer(ScopeMeta) && Offset == null)
+                    {
+                        Code.Add($"Li {InitialAddress}, {Name}(0)");
+                        if (!ForSetting)
+                        {
+                            Code.Add($"LB {InitialAddress}, 0({InitialAddress})");
+                        }
+                        //Helpers.DebugBreak(ScopeMeta, Code);
+
                         return InitialAddress;
                     }
 
@@ -500,7 +527,7 @@ namespace Lexer.AST
 
         public RegisterResult GetValue(CompilationMeta ScopeMeta, List<string> Code)
         {
-            RegisterResult addressRegister = GetAddress(ScopeMeta, Code);
+            RegisterResult addressRegister = GetAddress(ScopeMeta, Code, false);
             Code.Add($"LB {addressRegister}, 0({addressRegister})");
 
             return addressRegister;
@@ -508,7 +535,7 @@ namespace Lexer.AST
 
         public RegisterResult SetValue(CompilationMeta ScopeMeta, List<string> Code, RegisterResult RHSRegister)
         {
-            RegisterResult addressRegister = GetAddress(ScopeMeta, Code);
+            RegisterResult addressRegister = GetAddress(ScopeMeta, Code, true);
             Code.Add($"SB {RHSRegister}, 0({addressRegister})");
 
             return addressRegister;

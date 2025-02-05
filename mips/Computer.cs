@@ -1,6 +1,7 @@
 using mips;
 using mips.Instructions;
 using mips.Peripherals;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
@@ -51,7 +52,8 @@ public class Computer
             SBRK, Exit,
             Print_Char, Read_Char,
             Sys_Null, Sys_Null, Sys_Null, Sys_Null,
-            Exit2, Get_Time
+            Exit2, Get_Time,
+            DotNetBreak
         };
     }
 
@@ -438,6 +440,11 @@ public class Computer
     void Exit2()
     {
         throw new NotImplementedException();
+    }
+
+    void DotNetBreak()
+    {
+        Debugger.Break();
     }
     #endregion
 }
