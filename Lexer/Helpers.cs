@@ -37,7 +37,7 @@ namespace Lexer
         public static RegisterResult HeapAllocation(CompilationMeta CompilationMeta, List<string> Code, int DataSize)
         {
             GenericRegisterState registerState = new GenericRegisterState(new string[] {"$a0", "$v0"}, CompilationMeta);
-            registerState.SaveState(Code);
+            registerState.SaveState(CompilationMeta, Code);
             DataSize += 1;
 
             RegisterResult result = new RegisterResult($"$t{CompilationMeta.GetTempRegister()}");
@@ -48,7 +48,7 @@ namespace Lexer
             Code.Add($"SB $a0, 0($v0)");
             Code.Add($"Move {result}, $v0");
 
-            registerState.LoadState(Code);
+            registerState.LoadState(CompilationMeta, Code);
 
             return result;
         }
@@ -56,24 +56,24 @@ namespace Lexer
         public static void DebugPrint(CompilationMeta CompilationMeta, List<string> Code, RegisterResult Register)
         {
             GenericRegisterState registerState = new GenericRegisterState(new string[] { "$a0", "$v0" }, CompilationMeta);
-            registerState.SaveState(Code);
+            registerState.SaveState(CompilationMeta, Code);
 
             Code.Add($"Move $a0, {Register}");
             Code.Add($"Ori $v0, $zero, 1");
             Code.Add($"Syscall");
 
-            registerState.LoadState(Code);
+            registerState.LoadState(CompilationMeta, Code);
         }
 
         public static void DebugBreak(CompilationMeta CompilationMeta, List<string> Code)
         {
             GenericRegisterState registerState = new GenericRegisterState(new string[] { "$v0" }, CompilationMeta);
-            registerState.SaveState(Code);
+            registerState.SaveState(CompilationMeta, Code);
 
             Code.Add($"Ori $v0, $zero, 19");
             Code.Add($"Syscall");
 
-            registerState.LoadState(Code);
+            registerState.LoadState(CompilationMeta, Code);
         }
     }
 }

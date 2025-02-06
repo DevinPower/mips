@@ -166,12 +166,20 @@ namespace Lexer
                     TempRegisters[i] = _Parent.TempRegisters[i];
                 }
             }
+
+            if (Parent != null)
+                StackOffset = Parent.StackOffset;
         }
 
         public int GetAndOffsetStack(int DataSize)
         {
             StackOffset += DataSize;
             return StackOffset;
+        }
+
+        public void AddStackPointer(int Amount)
+        {
+            StackOffset += Amount;
         }
 
         public void MergeExternal(CompilationMeta ExternalMeta)
@@ -306,6 +314,11 @@ namespace Lexer
             return Matches.First();
         }
 
+        public int GetArgumentCount()
+        {
+            return Arguments.Length;
+        }
+
         public void AddVariable(string Variable, string Type, bool IsClass)
         {
             Variables.Add(new VariableMeta(Variable, Type, IsClass));
@@ -402,10 +415,16 @@ namespace Lexer
 
         public void ExitScope(List<string> Code)
         {
-            if (StackOffset == 0)
+            if (Variables.Count == 0)
                 return;
 
-            Code.Add($"Ori $t9, $zero, {StackOffset}");
+            int localStackOffset = 0;
+            foreach (VariableMeta variable in Variables)
+            {
+                localStackOffset += variable.GetStackOffset();
+            }
+
+            Code.Add($"Ori $t9, $zero, {localStackOffset}");
             Code.Add($"Add $sp, $sp, $t9");
         }
 

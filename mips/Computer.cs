@@ -78,12 +78,12 @@ public class Computer
     void InitializePeripherals()
     {
         Peripherals = new List<Peripheral>();
-        Peripherals.Add(new TestPeripheral());
-
-        foreach (var peripheral in Peripherals)
-        {
-            peripheral.Initialize(this);
-        }
+        //Peripherals.Add(new TestPeripheral());
+        //
+        //foreach (var peripheral in Peripherals)
+        //{
+        //    peripheral.Initialize(this);
+        //}
     }
 
     public int GetProgramCounter()
@@ -179,6 +179,9 @@ public class Computer
 
     void LoadInstructionProcessors()
     {
+        if (InstructionProcessors != null)
+            return;
+
         InstructionProcessors = new Dictionary<int, Instruction>();
         
         OP_000000 op0 = new OP_000000();

@@ -342,13 +342,16 @@ namespace TideScriptREPL
                     Console.BackgroundColor = ConsoleColor.Gray;
                     Console.ForegroundColor = ConsoleColor.Black;
 
+                    Console.Write(" ");
+
                     Console.Write(line.ToString("000"));
+                    
                     line++;
 
                     Console.BackgroundColor = originalBackground;
                     Console.ForegroundColor = originalForeground;
 
-                    Console.Write("  ");
+                    Console.Write(" ");
                 }
 
                 var color = getColor(t.TokenType);
