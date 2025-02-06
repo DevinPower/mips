@@ -34,6 +34,11 @@ namespace TideScriptREPL
             }
         }
 
+        public static int GetCursorX(int CurrentPosition)
+        {
+            return CurrentPosition + 5;
+        }
+
         static void Interactive(string[] ContentsDefault)
         {
             Console.CursorSize = 100;
@@ -217,7 +222,7 @@ namespace TideScriptREPL
 
                 DrawContents(l, Contents);
                 DrawFooter();
-                Console.SetCursorPosition(currentPosition, currentLine);
+                Console.SetCursorPosition(GetCursorX(currentPosition), currentLine);
             }
         }
 
@@ -324,26 +329,34 @@ namespace TideScriptREPL
 
             Console.Clear();
 
+            bool isNewLine = true;
+            int line = 1;
+
             foreach(Token t in tokens)
             {
+                if (isNewLine)
+                {
+                    var originalBackground = Console.BackgroundColor;
+                    var originalForeground = Console.ForegroundColor;
+
+                    Console.BackgroundColor = ConsoleColor.Gray;
+                    Console.ForegroundColor = ConsoleColor.Black;
+
+                    Console.Write(line.ToString("000"));
+                    line++;
+
+                    Console.BackgroundColor = originalBackground;
+                    Console.ForegroundColor = originalForeground;
+
+                    Console.Write("  ");
+                }
+
                 var color = getColor(t.TokenType);
                 Console.ForegroundColor = color;
 
                 Console.Write(t.Value);
+                isNewLine = t.Value == "\n";
             }
-
-            //int i = 0;
-            //foreach(List<char> Line in Contents)
-            //{
-            //    foreach(char c in Line)
-            //    {
-            //        Console.ForegroundColor = getColor.Invoke(i);
-            //        Console.Write(c);
-            //        i++;
-            //    }
-            //
-            //    Console.Write("\n");
-            //}
         }
 
         static void DrawAlert(string Message, ConsoleColor Color)
@@ -398,69 +411,6 @@ namespace TideScriptREPL
 
             Console.BackgroundColor = ConsoleColor.Black;
             Console.ForegroundColor = startColor;
-        }
-
-        static void REPL()
-        {
-            //var Code = "var i = 0;\n" +
-            //    "while (i < 10) { i = 2;};\n" +
-            //    "var b = 22;\n";
-
-            //var Code = "var i = 4124;\n" +
-            //    "var z = 1212;\n" +
-            //    "var str = \"my string\";\n";
-
-            var SysIo = 
-                "|Ori $v0, $zero, 4\n" +
-                "|LB $a0, PROMPT(0)\n" +
-                "|Syscall\n";
-
-            //var Code = SysIo + "var PROMPT = \"Hello, world!\";\n";
-
-            //var Code = "var i = 10;\n" +
-            //    "function testFunction(){\n" +
-            //    "   i += 1;\n" +
-            //    "};\n" +
-            //    "testFunction();\n" +
-            //    "var x = 444;\n" +
-            //    "//testFunction();\n";
-
-            var Code = "var num = 1212;\n" +
-                "num += 1;\n";
-
-            var Code2 = "var x = 10;\n" +
-                "var y = 33;\n" +
-                "var z = 2 * y;\n" +
-                "var label = \"hey\";\n" + 
-                "label = \"hello\";\n" +
-                "y = 3;\n" +
-                "y = 545;\n" + 
-                "var l = x;\n";
-
-            //var Code = "var left = 10;\n" +
-            //    "var right = 20;\n" +
-            //    "var third = \"test \\\"value\\\" string\";\n" +
-            //    "right + third;";
-
-            //var Code = "var x = (9 * 7 * 67);\n" +
-            //    "var y = 6;";
-
-            //var Code = "var label = \"my test\";\n" +
-            //    "var num = 44;\n" +
-            //    "label = \"mt\";";
-
-            //while (true)
-            //{
-            //    string Input = Console.ReadLine();
-            //    var ic = Compile(Code);
-            //
-            //    Computer c = new Computer(128);
-            //    c.Compile(ic);
-            //
-            //    c.ProcessFull();
-            //
-            //    c.DumpMemory();
-            //}
         }
 
         static string[] Compile(List<Token> tokens)
