@@ -56,9 +56,10 @@
 
         public GenericRegisterState AddARegisters(CompilationMeta MetaScope)
         {
-            for (int i = 0; i < MetaScope.GetArgumentCount(); i++)
+            int argCount = MetaScope.GetArgumentCount();
+            for (int i = 0; i < argCount; i++)
             {
-                Registers.Add($"$t{i}");
+                Registers.Add($"$a{i}");
                 spaceSum++;
             }
 
@@ -468,7 +469,6 @@
                     if (IsClass && !VariableIsPointer(ScopeMeta) && Offset == null)
                     {
                         Code.Add($"Addi {InitialAddress}, $sp, {MetaData.GetStackOffset()}");
-                        Helpers.DebugBreak(ScopeMeta, Code);
                         return InitialAddress;
                     }
 
@@ -541,7 +541,7 @@
                     }
                 }
 
-                Code.Add($"Move {InitialAddress}, $a{ArgumentPosition}");
+                Code.Add($"Li {InitialAddress}, {3 + ArgumentPosition}(0)");
                 return InitialAddress;
             }
         }
@@ -913,14 +913,13 @@
 
         public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
         {
+            RegisterResult resultRegister = new RegisterResult($"t{ScopeMeta.GetTempRegister()}");
             GenericRegisterState registerState = new GenericRegisterState(new string[] { "$ra" }, ScopeMeta)
                 .AddTRegisters(ScopeMeta).AddARegisters(ScopeMeta);
 
             registerState.SaveState(ScopeMeta, Code);
-            Helpers.DebugBreak(ScopeMeta, Code);
             Code.Add($"Jal {Name}.Instantiate");
 
-            RegisterResult resultRegister = new RegisterResult($"t{ScopeMeta.GetTempRegister()}");
             Code.Add($"Move {resultRegister}, $v0");
 
             registerState.LoadState(ScopeMeta, Code);

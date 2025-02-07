@@ -316,7 +316,7 @@ namespace Lexer
 
         public int GetArgumentCount()
         {
-            return Arguments.Length;
+            return Arguments.Count((x) => x != null);
         }
 
         public void AddVariable(string Variable, string Type, bool IsClass)
