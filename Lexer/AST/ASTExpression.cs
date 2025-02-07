@@ -483,7 +483,7 @@
                 IsLocal = MetaData.IsLocal;
                 IsClass = MetaData.IsClass();
 
-                if (!IsLocal)   //argument, local
+                if (!IsLocal)   //argument, non-local
                 {
                     if (IsClass && ArgumentIsPointer(ScopeMeta, false) && Offset != null && PropertyOffset != null)
                     {
@@ -889,11 +889,12 @@
 
             foreach (FunctionDefinition f in FunctionDefinitions)
             {
+                //TODO: These functions are all sharing scope...
                 ScopeMeta.FreeTempRegister(f.GenerateCode(ScopedMeta, Code));
             }
 
             Code.Add($"{Name}.Instantiate:");
-            RegisterResult resultRegister = Helpers.HeapAllocation(ScopedMeta, Code, DataSize);
+            RegisterResult resultRegister = Helpers.HeapAllocation(ScopeMeta, Code, DataSize);
 
             Code.Add($"Jr $ra");
             Code.Add($"{EndGuid}:");
@@ -920,9 +921,8 @@
             registerState.SaveState(ScopeMeta, Code);
             Code.Add($"Jal {Name}.Instantiate");
 
-            Code.Add($"Move {resultRegister}, $v0");
-
             registerState.LoadState(ScopeMeta, Code);
+            Code.Add($"Move {resultRegister}, $v0");
 
             return resultRegister;
         }
