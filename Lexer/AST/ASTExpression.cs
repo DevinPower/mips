@@ -422,7 +422,7 @@
 
                     if (IsClass && !VariableIsPointer(ScopeMeta) && Offset == null)
                     {
-                        Code.Add($"La {InitialAddress}, {Name}(0)");
+                        Code.Add($"La {InitialAddress}, {Name}");
                         if (!ForSetting)
                         {
                             Code.Add($"LB {InitialAddress}, 0({InitialAddress})");
@@ -451,9 +451,8 @@
 
                     if (IsClass && !VariableIsPointer(ScopeMeta) && Offset == null && PropertyOffset != null)
                     {
+                        Code.Add($"LB {InitialAddress}, {MetaData.GetStackOffset()}($sp)");
                         RegisterResult offsetValue = PropertyOffset.GenerateCode(ScopeMeta, Code);
-                        Code.Add($"Addi {InitialAddress}, $sp, {MetaData.GetStackOffset()}");
-                        Code.Add($"LB {InitialAddress}, {InitialAddress}($zero)");
                         Code.Add($"Add {InitialAddress}, {InitialAddress}, {offsetValue}");
 
                         ScopeMeta.FreeTempRegister(offsetValue);
@@ -469,6 +468,7 @@
                     if (IsClass && !VariableIsPointer(ScopeMeta) && Offset == null)
                     {
                         Code.Add($"Addi {InitialAddress}, $sp, {MetaData.GetStackOffset()}");
+
                         return InitialAddress;
                     }
 
@@ -914,13 +914,13 @@
 
         public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
         {
-            RegisterResult resultRegister = new RegisterResult($"t{ScopeMeta.GetTempRegister()}");
             GenericRegisterState registerState = new GenericRegisterState(new string[] { "$ra" }, ScopeMeta)
                 .AddTRegisters(ScopeMeta).AddARegisters(ScopeMeta);
 
             registerState.SaveState(ScopeMeta, Code);
             Code.Add($"Jal {Name}.Instantiate");
 
+            RegisterResult resultRegister = new RegisterResult($"t{ScopeMeta.GetTempRegister()}");
             registerState.LoadState(ScopeMeta, Code);
             Code.Add($"Move {resultRegister}, $v0");
 

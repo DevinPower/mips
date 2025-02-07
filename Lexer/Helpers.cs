@@ -36,17 +36,16 @@ namespace Lexer
         /// <returns></returns>
         public static RegisterResult HeapAllocation(CompilationMeta CompilationMeta, List<string> Code, int DataSize)
         {
-            GenericRegisterState registerState = new GenericRegisterState(new string[] {"$a0", "$v0"}, CompilationMeta);
+            GenericRegisterState registerState = new GenericRegisterState(new string[] {"$a0" }, CompilationMeta);
             registerState.SaveState(CompilationMeta, Code);
             DataSize += 1;
 
-            RegisterResult result = new RegisterResult($"$t{CompilationMeta.GetTempRegister()}");
+            RegisterResult result = new RegisterResult("$v0");
 
             Code.Add($"Li $a0, {DataSize}");
             Code.Add($"Ori $v0, $zero, 9");
             Code.Add($"Syscall");
             Code.Add($"SB $a0, 0($v0)");
-            Code.Add($"Move {result}, $v0");
 
             registerState.LoadState(CompilationMeta, Code);
 
