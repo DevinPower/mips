@@ -1,6 +1,7 @@
 using mips;
 using mips.Instructions;
 using mips.Peripherals;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
@@ -51,7 +52,8 @@ public class Computer
             SBRK, Exit,
             Print_Char, Read_Char,
             Sys_Null, Sys_Null, Sys_Null, Sys_Null,
-            Exit2, Get_Time
+            Exit2, Get_Time,
+            DotNetBreak
         };
     }
 
@@ -76,12 +78,12 @@ public class Computer
     void InitializePeripherals()
     {
         Peripherals = new List<Peripheral>();
-        Peripherals.Add(new TestPeripheral());
-
-        foreach (var peripheral in Peripherals)
-        {
-            peripheral.Initialize(this);
-        }
+        //Peripherals.Add(new TestPeripheral());
+        //
+        //foreach (var peripheral in Peripherals)
+        //{
+        //    peripheral.Initialize(this);
+        //}
     }
 
     public int GetProgramCounter()
@@ -177,6 +179,9 @@ public class Computer
 
     void LoadInstructionProcessors()
     {
+        if (InstructionProcessors != null)
+            return;
+
         InstructionProcessors = new Dictionary<int, Instruction>();
         
         OP_000000 op0 = new OP_000000();
@@ -438,6 +443,11 @@ public class Computer
     void Exit2()
     {
         throw new NotImplementedException();
+    }
+
+    void DotNetBreak()
+    {
+        Debugger.Break();
     }
     #endregion
 }

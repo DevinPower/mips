@@ -140,13 +140,6 @@ namespace Lexer
                 return classScope.GetVariable(x.Name);
             }).ToList();
 
-            foreach(VariableMeta variableMeta in variablesMeta)
-            {
-                variableMeta.IsHeapAllocated = true;
-            }
-
-            //TODO: This could be represented more clearly
-
             functionDefinitions.ForEach((x) => {
                 string NewName = $"{ClassName}." + classScope.GetFunction(x.Name.Split('.')[1]).Name;
                 classScope.GetFunction(x.Name.Split('.')[1]).Name = NewName;
@@ -303,19 +296,20 @@ namespace Lexer
                         Advance();
                         List<(string type, string name, bool isArray, bool isClass)> Arguments = GetArguments(CompilationMeta);
 
-                        ConsumeWhitespaceAndComments();
-
-                        if (!IsMatch(TokenTypes.Separator, "{"))
-                            throw new Exception("Expected script block");
-
-                        CompilationMeta subScope = CompilationMeta.AddSubScope(false);
-                        Expression block = ScriptBlock(CompilationMeta, subScope);
-
                         CompilationMeta.AddFunction(FunctionName, ReturnType, Arguments.Select((x) => x.type).ToList());
+                        CompilationMeta subScope = CompilationMeta.AddSubScope(false);
+
                         foreach (var argument in Arguments)
                         {
                             subScope.AddArgument(argument.name, argument.type, argument.isArray, argument.isClass);
                         }
+
+                        ConsumeWhitespaceAndComments();
+
+                        if (!IsMatch(TokenTypes.Separator, "{"))
+                            throw new Exception("Expected script block");
+                        
+                        Expression block = ScriptBlock(CompilationMeta, subScope);
 
                         return new FunctionDefinition(FunctionName, (ScriptBlock)block);
                     }
@@ -584,9 +578,12 @@ namespace Lexer
             }
 
             VariableMeta? VariableMeta = CompilationMeta.GetVariable(identifier.Name);
+            if (VariableMeta == null)
+                VariableMeta = CompilationMeta.GetArgument(identifier.Name, false);
+
             FunctionMeta? FunctionData = null;
 
-            if (VariableMeta != null && VariableMeta.IsClass())
+            if (VariableMeta != null && CompilationMeta.IsClass(VariableMeta.Type))
             {
                 if (IsMatch(TokenTypes.Separator, "."))
                 {
@@ -598,12 +595,15 @@ namespace Lexer
                     if (Peek().Value == "(")
                     {
                         FunctionData = CompilationMeta.GetFunction($"{ClassMeta.Name}.{accessName}");
+                        Expression originalOffset = identifier.Offset;
                         identifier = new Variable($"{ClassMeta.Name}.{accessName}");
+                        identifier.SetOffset(originalOffset);
                     }
                     else
                     {
                         int address = ClassMeta.GetClassDataPosition(accessName);
-                        identifier.SetOffset(new IntLiteral(address));
+                        identifier.SetPropertyOffset(new IntLiteral(address));
+                        return identifier;
                     }
                 }
             }
@@ -619,7 +619,23 @@ namespace Lexer
 
                 while (!IsMatch(TokenTypes.Separator, ")"))
                 {
-                    Arguments.Add(Expression(CompilationMeta));
+                    var result = Expression(CompilationMeta);
+
+                    if (result is Variable v)
+                    {
+                        if (CompilationMeta.GetVariable(v.Name) != null && !v.HasOffset() && CompilationMeta.GetVariable(v.Name).IsClass())
+                        {
+                            Arguments.Add(new AddressPointer(v));
+                        }
+                        else
+                        {
+                            Arguments.Add(result);
+                        }
+                    }
+                    else
+                    {
+                        Arguments.Add(result);
+                    }
 
                     if (!IsMatch(TokenTypes.Separator, ",") && Peek().Value != ")")
                         throw new Exception("Argument format issue");
@@ -637,7 +653,7 @@ namespace Lexer
 
             if (CompilationMeta.GetVariable(identifier.Name) != null && !identifier.HasOffset() && CompilationMeta.GetVariable(identifier.Name).IsArray)
             {
-                return new AddressPointer(identifier.Name);
+                return new AddressPointer(identifier);
             }
 
             return identifier;

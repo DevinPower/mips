@@ -21,12 +21,12 @@ namespace Lexer
             _IsClass = IsClass;
         }
 
-        public VariableMeta(string Name, string Type, int ArraySize, bool IsClass)
+        public VariableMeta(string Name, string Type, int ArraySize, bool IsArray, bool IsClass)
         {
             this.Name = Name;
             this.Type = Type;
             this.DataSize = ArraySize;
-            this.IsArray = true;
+            this.IsArray = IsArray;
             _IsClass = IsClass;
         }
 
@@ -69,6 +69,7 @@ namespace Lexer
         public void GenerateStack(CompilationMeta CompilationMeta, List<string> Code)
         {
             IsLocal = true;
+            IsHeapAllocated = true;
 
             Code.Add($"Ori $t9, $zero, {DataSize}");
             Code.Add($"Sub $sp, $sp, $t9");
@@ -99,7 +100,7 @@ namespace Lexer
 
         public int GetClassDataPosition(string Property)
         {
-            int offset = 0;
+            int offset = 1;
             foreach(VariableMeta Meta in Properties)
             {
                 if (Meta.Name == Property)
@@ -165,12 +166,20 @@ namespace Lexer
                     TempRegisters[i] = _Parent.TempRegisters[i];
                 }
             }
+
+            if (Parent != null)
+                StackOffset = Parent.StackOffset;
         }
 
         public int GetAndOffsetStack(int DataSize)
         {
             StackOffset += DataSize;
             return StackOffset;
+        }
+
+        public void AddStackPointer(int Amount)
+        {
+            StackOffset += Amount;
         }
 
         public void MergeExternal(CompilationMeta ExternalMeta)
@@ -305,6 +314,11 @@ namespace Lexer
             return Matches.First();
         }
 
+        public int GetArgumentCount()
+        {
+            return Arguments.Count((x) => x != null);
+        }
+
         public void AddVariable(string Variable, string Type, bool IsClass)
         {
             Variables.Add(new VariableMeta(Variable, Type, IsClass));
@@ -312,7 +326,7 @@ namespace Lexer
 
         public void AddVariableArray(string Variable, string Type, int Size, bool IsClass)
         {
-            Variables.Add(new VariableMeta(Variable, Type, Size, IsClass));
+            Variables.Add(new VariableMeta(Variable, Type, Size, true, IsClass));
         }
 
         public void AddArgument(string Name, string Type, bool IsArray, bool IsClass)
@@ -321,7 +335,7 @@ namespace Lexer
             {
                 if (Arguments[i] == null)
                 {
-                    Arguments[i] = new VariableMeta(Name, Type, IsArray ? 2 : 0, IsClass);
+                    Arguments[i] = new VariableMeta(Name, Type, IsArray ? 2 : 0, IsArray, IsClass);
                     return;
                 }
             }
@@ -401,10 +415,16 @@ namespace Lexer
 
         public void ExitScope(List<string> Code)
         {
-            if (StackOffset == 0)
+            if (Variables.Count == 0)
                 return;
 
-            Code.Add($"Ori $t9, $zero, {StackOffset}");
+            int localStackOffset = 0;
+            foreach (VariableMeta variable in Variables)
+            {
+                localStackOffset += variable.GetStackOffset();
+            }
+
+            Code.Add($"Ori $t9, $zero, {localStackOffset}");
             Code.Add($"Add $sp, $sp, $t9");
         }
 
