@@ -439,13 +439,27 @@
                 {
                     if (IsClass && VariableIsPointer(ScopeMeta) && Offset != null && PropertyOffset != null)
                     {
+                        RegisterResult arrayOffset = Offset.GenerateCode(ScopeMeta, Code);
+                        Code.Add($"Addi {InitialAddress}, $sp, {MetaData.GetStackOffset()}");
+                        Code.Add($"Add {InitialAddress}, {InitialAddress}, {arrayOffset}");
 
+                        Code.Add($"LB {InitialAddress}, 0({InitialAddress})");
+
+                        RegisterResult offsetValue = PropertyOffset.GenerateCode(ScopeMeta, Code);
+                        Code.Add($"Add {InitialAddress}, {InitialAddress}, {offsetValue}");
+
+                        ScopeMeta.FreeTempRegister(arrayOffset);
+                        ScopeMeta.FreeTempRegister(offsetValue);
                         return InitialAddress;
                     }
 
                     if (IsClass && VariableIsPointer(ScopeMeta) && Offset != null)
                     {
+                        RegisterResult arrayOffset = Offset.GenerateCode(ScopeMeta, Code);
+                        Code.Add($"Addi {InitialAddress}, $sp, {MetaData.GetStackOffset()}");
+                        Code.Add($"Add {InitialAddress}, {InitialAddress}, {arrayOffset}");
 
+                        ScopeMeta.FreeTempRegister(arrayOffset);
                         return InitialAddress;
                     }
 
@@ -461,6 +475,7 @@
 
                     if (IsClass && VariableIsPointer(ScopeMeta) && Offset == null)
                     {
+                        Code.Add($"Addi {InitialAddress}, $sp, {MetaData.GetStackOffset()}");
 
                         return InitialAddress;
                     }
@@ -487,13 +502,26 @@
                 {
                     if (IsClass && ArgumentIsPointer(ScopeMeta, false) && Offset != null && PropertyOffset != null)
                     {
+                        RegisterResult offsetValue = Offset.GenerateCode(ScopeMeta, Code);
+                        Code.Add($"LB {InitialAddress}, {3 + ArgumentPosition}(0)");
+                        Code.Add($"Add {InitialAddress}, {InitialAddress}, {offsetValue}");
+                        Code.Add($"LB {InitialAddress}, 0({InitialAddress})");
 
+                        RegisterResult propertyOffsetValue = PropertyOffset.GenerateCode(ScopeMeta, Code);
+                        Code.Add($"Add {InitialAddress}, {InitialAddress}, {propertyOffsetValue}");
+
+                        ScopeMeta.FreeTempRegister(offsetValue);
+                        ScopeMeta.FreeTempRegister(propertyOffsetValue);
                         return InitialAddress;
                     }
 
                     if (IsClass && ArgumentIsPointer(ScopeMeta, false) && Offset != null)
                     {
+                        RegisterResult offsetValue = Offset.GenerateCode(ScopeMeta, Code);
+                        Code.Add($"LB {InitialAddress}, {3 + ArgumentPosition}(0)");
+                        Code.Add($"Add {InitialAddress}, {InitialAddress}, {offsetValue}");
 
+                        ScopeMeta.FreeTempRegister(offsetValue);
                         return InitialAddress;
                     }
 
@@ -509,6 +537,7 @@
 
                     if (IsClass && ArgumentIsPointer(ScopeMeta, false) && Offset == null)
                     {
+                        Code.Add($"Li {InitialAddress}, {3 + ArgumentPosition}");
 
                         return InitialAddress;
                     }
