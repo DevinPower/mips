@@ -44,17 +44,12 @@ public class Computer
         InitializeRegisters(_heapPointer + 3);
         LoadInstructionProcessors();
         InitializePeripherals();
+    }
 
-        _Syscall = new[]
-        {
-            Sys_Null, Print_Int, Print_Float, Print_Double, Print_String,
-            Read_Int, Read_Float, Read_Double, Read_String,
-            SBRK, Exit,
-            Print_Char, Read_Char,
-            Sys_Null, Sys_Null, Sys_Null, Sys_Null,
-            Exit2, Get_Time,
-            DotNetBreak
-        };
+    public Computer SetSysCalls(Action[] Syscalls)
+    {
+        _Syscall = Syscalls;
+        return this;
     }
 
     public void ProcessFull()
@@ -319,27 +314,27 @@ public class Computer
         Console.WriteLine($"Program Counter at: {_programCounter}");
     }
     #region SYSCALLS
-    void Sys_Null()
+    public void Sys_Null()
     {
         ThrowSimulatedException("SYSCALL OUTSIDE BOUNDS OF ALLOWED");
     }
 
-    void Print_Int()
+    public void Print_Int()
     {
         Console.Write(Memory[GetRegisterAddress("$a0")]);
     }
 
-    void Print_Float()
+    public void Print_Float()
     {
         Console.Write(HelperFunctions.IntToFloat(Memory[GetRegisterAddress("$a0")]));
     }
 
-    void Print_Double()
+    public void Print_Double()
     {
         throw new NotImplementedException();
     }
 
-    void Print_String()
+    public void Print_String()
     {
         StringBuilder value = new StringBuilder();
         int memoryPointer = Memory[GetRegisterAddress("$a0")];
@@ -356,27 +351,27 @@ public class Computer
         }
     }
 
-    void Get_Time()
+    public void Get_Time()
     {
         Memory[GetRegisterAddress("$v0")] = (int)DateTime.Now.TimeOfDay.TotalSeconds;
     }
 
-    void Read_Int()
+    public void Read_Int()
     {
         Memory[GetRegisterAddress("$v0")] = Int32.Parse(Console.ReadLine());
     }
 
-    void Read_Float()
+    public void Read_Float()
     {
         throw new NotImplementedException();
     }
 
-    void Read_Double()
+    public void Read_Double()
     {
         throw new NotImplementedException();
     }
 
-    void Read_String()
+    public void Read_String()
     {
         string str = Console.ReadLine();
         int i = Memory[GetRegisterAddress("$a0")];
@@ -418,32 +413,32 @@ public class Computer
         }
     }
 
-    void SBRK()
+    public void SBRK()
     {
         Memory[GetRegisterAddress("$v0")] = FindMemoryOfLength(Memory[GetRegisterAddress("$a0")]);
     }
 
-    void Exit()
+    public void Exit()
     {
         _programCounter = int.MaxValue;     //Put counter outside of bounds to finish
     }
 
-    void Print_Char()
+    public void Print_Char()
     {
         Console.Write((char)Memory[GetRegisterAddress("$a0")]);
     }
 
-    void Read_Char()
+    public void Read_Char()
     {
         Memory[GetRegisterAddress("$v0")] = Console.ReadLine()[0];
     }
 
-    void Exit2()
+    public void Exit2()
     {
         throw new NotImplementedException();
     }
 
-    void DotNetBreak()
+    public void DotNetBreak()
     {
         Debugger.Break();
     }

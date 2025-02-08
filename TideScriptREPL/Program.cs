@@ -88,6 +88,17 @@ namespace TideScriptREPL
                             }
 
                             Computer c = new Computer(2048, 64);
+                            c.SetSysCalls(new Action[]
+                            {
+                                c.Sys_Null, c.Print_Int, c.Print_Float, c.Print_Double, c.Print_String,
+                                c.Read_Int, c.Read_Float, c.Read_Double, c.Read_String,
+                                c.SBRK, c.Exit,
+                                c.Print_Char, c.Read_Char,
+                                c.Sys_Null, c.Sys_Null, c.Sys_Null, c.Sys_Null,
+                                c.Exit2, c.Get_Time,
+                                c.DotNetBreak
+                            });
+
                             c.Compile(ic);
 
                             if (Key.Modifiers != ConsoleModifiers.Control)
