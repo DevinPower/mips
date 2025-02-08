@@ -60,11 +60,9 @@ public class Computer
     public void ProcessFull()
     {
         var watch = System.Diagnostics.Stopwatch.StartNew();
-        Console.ForegroundColor = ConsoleColor.Yellow;
         int count = 0;
         while (!StepProgram()) count++;
         watch.Stop();
-        Console.ForegroundColor = ConsoleColor.White;
         Console.WriteLine();
         Console.WriteLine($"Finished program with {count} instructions in {watch.ElapsedMilliseconds}ms");
         //DumpMemory();
