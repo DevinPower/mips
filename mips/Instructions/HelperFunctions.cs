@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace mips.Instructions
 {
-    internal class HelperFunctions
+    public class HelperFunctions
     {
         public static int[] BitsToInt(int data, params int[] sizes)
         {

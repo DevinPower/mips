@@ -48,11 +48,13 @@ namespace Lexer
             string CurrentToken = "";
 
             List<(string, TokenTypes, int, int)> LexedCode = new List<(string, TokenTypes, int, int)>();
+            int tokenStart = 0;
 
             for (int i = 0; i < Contents.Length; i++)
             {
                 char c = Contents[i];
-                int tokenStart = i;
+                if (CurrentToken == "")
+                    tokenStart = i;
 
                 if (c == '#')
                 {

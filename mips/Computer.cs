@@ -9,11 +9,10 @@ using System.Text;
 public class Computer
 {
     public int[] Memory { get; set; }
-    public List<Peripheral> Peripherals { get; set; }
     
-    int _programCounter;
-    int _heapPointer;
-    int _memoryPointer;
+    public int _programCounter { get; set; }
+    public int _heapPointer { get; set; }
+    public int _memoryPointer { get; set; }
 
     Action[] _Syscall;
     
@@ -43,7 +42,11 @@ public class Computer
 
         InitializeRegisters(_heapPointer + 3);
         LoadInstructionProcessors();
-        InitializePeripherals();
+    }
+
+    public Computer()
+    {
+        LoadInstructionProcessors();
     }
 
     public Computer SetSysCalls(Action[] Syscalls)
@@ -66,17 +69,6 @@ public class Computer
     public void SysCall()
     {
         _Syscall[Memory[GetRegisterAddress("$v0")]]();
-    }
-
-    void InitializePeripherals()
-    {
-        Peripherals = new List<Peripheral>();
-        //Peripherals.Add(new TestPeripheral());
-        //
-        //foreach (var peripheral in Peripherals)
-        //{
-        //    peripheral.Initialize(this);
-        //}
     }
 
     public int GetProgramCounter()
@@ -149,25 +141,12 @@ public class Computer
     {
         int CurrentLine = Memory[_programCounter++];
         if (CurrentLine == 0)
-        {
-            ProcessPeripherals();
             return true;
-        }
 
         int OpCode = (CurrentLine >> 26) & 0b111111;
         InstructionProcessors[OpCode].Execute(this, CurrentLine);
 
-        ProcessPeripherals();
-
         return false;
-    }
-
-    void ProcessPeripherals()
-    {
-        foreach (var peripheral in Peripherals)
-        {
-            peripheral.Step(this);
-        }
     }
 
     void LoadInstructionProcessors()
@@ -280,11 +259,6 @@ public class Computer
             }
 
             expandedProgram.AddRange(lineResults);
-        }
-        
-        foreach (var peripheral in Peripherals)
-        {
-            //ip.AddLabel(peripheral.Name, peripheral.MemoryAddress);
         }
 
         foreach (string Line in expandedProgram)
