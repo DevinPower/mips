@@ -187,6 +187,8 @@ namespace Lexer
             Variables.AddRange(ExternalMeta.Variables);
             Functions.AddRange(ExternalMeta.Functions);
             _childScopes.AddRange(ExternalMeta._childScopes);
+            Classes.AddRange(ExternalMeta.Classes);
+
             foreach (var key in ExternalMeta.StringData.Keys)
             {
                 StringData.Add(key, ExternalMeta.StringData[key]);
@@ -393,6 +395,17 @@ namespace Lexer
             Code.Insert(InsertCount++, ".main");
         }
 
+        protected void GenerateStringConstantCode(List<string> Code, ref int InsertCount)
+        {
+            foreach (string key in StringData.Keys)
+            {
+                Code.Insert(InsertCount++, $"{key}: .asciiz \"{StringData[key]}\"");
+            }
+
+            foreach (var child in _childScopes)
+                child.GenerateStringConstantCode(Code, ref InsertCount);
+        }
+
         protected void GenerateVariableCode(List<string> Code, ref int InsertCount)
         {
             foreach (VariableMeta variable in Variables)
@@ -426,17 +439,6 @@ namespace Lexer
 
             Code.Add($"Ori $t9, $zero, {localStackOffset}");
             Code.Add($"Add $sp, $sp, $t9");
-        }
-
-        protected void GenerateStringConstantCode(List<string> Code, ref int InsertCount)
-        {
-            foreach (string key in StringData.Keys)
-            {
-                Code.Insert(InsertCount++, $"{key}: .asciiz \"{StringData[key]}\"");
-            }
-
-            foreach (var child in _childScopes)
-                child.GenerateStringConstantCode(Code, ref InsertCount);
         }
 
         public void FreeTempRegister(RegisterResult Register)

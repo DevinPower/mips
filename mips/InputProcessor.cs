@@ -191,11 +191,12 @@ namespace mips
                             }
                         }
 
-                        addressPointer += fullString.Length;
+                        addressPointer += fullString.Length + 1;
                         fullString.ToList().ForEach((x) =>
                         {
                             Owner.StoreMemory(x);
                         });
+                        Owner.StoreMemory(0);
                         break;
                     case "word":
                         if (Int32.TryParse(LineRemainder.Trim(), out int result))
