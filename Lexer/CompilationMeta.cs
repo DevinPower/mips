@@ -53,7 +53,7 @@ namespace Lexer
             throw new Exception($";error generating data for Type {Type} on variable {Name}");
         }
 
-        public int GetStackOffset()
+        public int GetStackOffset(CompilationMeta ScopeMeta)
         {
             if (_stackOffset == null)
                 throw new Exception($"Variable {Name} not yet allocated on stack!");
@@ -428,7 +428,7 @@ namespace Lexer
 
         public void ExitScope(List<string> Code)
         {
-            if (Variables.Count == 0)
+            if (Variables.Count == 0 || _Parent == null)
                 return;
 
             int localStackOffset = 0;
