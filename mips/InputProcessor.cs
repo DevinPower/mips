@@ -67,6 +67,15 @@ namespace mips
                     $"Ori {RegexResults.Groups[1].Value}, $at, {lower16}" };
             }
 
+            if (result < 0)
+            {
+                int upper16 = (result >> 16) & 0xFFFF;
+                int lower16 = result & 0xFFFF;
+
+                return new string[] {  $"Lui $at, {upper16}",
+                    $"Ori {RegexResults.Groups[1].Value}, $at, {lower16}" };
+            }
+
             return new string[] { $"Ori {RegexResults.Groups[1].Value}, $zero, {RegexResults.Groups[2].Value}" };
         }
 
