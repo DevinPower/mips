@@ -7,15 +7,11 @@
         public FunctionCallRegisterState(FunctionCall SubFunction, CompilationMeta MetaScope)
         {
             List<string> Registers = new List<string>();
-            for (int i = 0; i < SubFunction.Arguments.Count; i++)
-            {
-                Registers.Add($"$a{i}");
-            }
-
             Registers.Add("$ra");
 
             _registerState = new GenericRegisterState(Registers.ToArray(), MetaScope);
             _registerState.AddTRegisters(MetaScope);
+            _registerState.AddARegisters(MetaScope);
         }
 
         public void SaveState(CompilationMeta CompilationMeta, List<string> Code)
@@ -239,8 +235,6 @@
             
             Code.Add($"{EndGuid}:");
 
-            Body.FreeRegisters(ScopeMeta);
-
             if (ElseBody != null)
             {
                 resultRegister = ElseBody.GenerateCode(ScopeMeta, Code);
@@ -292,8 +286,6 @@
             var resultRegister = Body.GenerateCode(ScopeMeta, Code);
             Code.Add($"J {StartGuid}");
             Code.Add($"{EndGuid}:");
-
-            Body.FreeRegisters(ScopeMeta);
 
             return resultRegister;
         }
@@ -690,8 +682,6 @@
             Code.Add($"Jr $ra");
             Code.Add($"{EndGuid}:");
 
-            ScriptBlock.FreeRegisters(ScopeMeta);
-
             return resultRegister;
         }
     }
@@ -876,19 +866,12 @@
             foreach(Expression expression in Expressions)
             {
                 _usedRegisters.Add(expression.GenerateCode(ScopedMeta, Code));
+                ScopedMeta.FreeAllUsedRegisters();
             }
 
             ScopedMeta.ExitScope(Code);
 
             return null;
-        }
-
-        public void FreeRegisters(CompilationMeta ScopeMeta)
-        {
-            foreach (var register in _usedRegisters)
-            {
-                ScopedMeta.FreeTempRegister(register);
-            }
         }
     }
 

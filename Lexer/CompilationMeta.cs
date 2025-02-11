@@ -421,7 +421,7 @@ namespace Lexer
             int localStackOffset = 0;
             foreach (VariableMeta variable in Variables)
             {
-                localStackOffset += variable.GetStackOffset();
+                localStackOffset += variable.DataSize;
             }
 
             Code.Add($"Ori $t9, $zero, {localStackOffset}");

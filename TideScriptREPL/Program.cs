@@ -1,10 +1,5 @@
 ﻿using Lexer;
-using System.Reflection.Metadata.Ecma335;
-using System.Text.RegularExpressions;
-using mips;
-using Microsoft.VisualBasic;
 using System.Text;
-using System.Drawing;
 
 namespace TideScriptREPL
 {
