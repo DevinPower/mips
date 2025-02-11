@@ -541,6 +541,11 @@ namespace Lexer
         {
             switch (Value)
             {
+                case "*=":
+                case "/=":
+                case "+=":
+                case "-=":
+                    return 5;
                 case "&&":
                 case "||":
                     return 4;
@@ -551,13 +556,9 @@ namespace Lexer
                 case "*":
                 case "/":
                 case "%":
-                case "*=":
-                case "/=":
                     return 2;
                 case "+":
                 case "-":
-                case "+=":
-                case "-=":
                     return 1;
                 default:
                     return 0;
@@ -721,7 +722,7 @@ namespace Lexer
         //TODO: Consider finding max precedence dynamically in case we make changes in the future
         public Expression ParseExpressionChain(CompilationMeta CompilationMeta, List<OperatorListItem> orders)
         {
-            for (int precedenceLevel = 1; precedenceLevel <= 4; precedenceLevel++)
+            for (int precedenceLevel = 1; precedenceLevel <= 5; precedenceLevel++)
             {
                 for (int i = 0; i < orders.Count; i++)
                 {
