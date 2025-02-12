@@ -490,10 +490,16 @@ namespace Lexer
                     return OperatorTypes.GREATERTHAN;
                 case "<":
                     return OperatorTypes.LESSTHAN;
+                case ">=":
+                    return OperatorTypes.GREATERTHANEQUAL;
+                case "<=":
+                    return OperatorTypes.LESSTHANEQUAL;
                 case "=":
                     return OperatorTypes.ASSIGN;
                 case "==":
                     return OperatorTypes.EQUAL;
+                case "!=":
+                    return OperatorTypes.NOTEQUAL;
                 case "||":
                     return OperatorTypes.LOGICALOR;
                 case "&&":
@@ -529,8 +535,11 @@ namespace Lexer
                 case "&&":
                 case "||":
                 case "==":
+                case "!=":
                 case "<":
                 case ">":
+                case "<=":
+                case ">=":
                     return true;
                 default:
                     return false;
@@ -550,8 +559,11 @@ namespace Lexer
                 case "||":
                     return 4;
                 case "==":
+                case "!=":
                 case "<":
                 case ">":
+                case "<=":
+                case ">=":
                     return 3;
                 case "*":
                 case "/":

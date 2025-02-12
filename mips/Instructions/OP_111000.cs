@@ -25,7 +25,9 @@
             Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>($"{nameof(Div)}.s", 26, Div, GetBasicInstructionsWithFunctCode("011010")));
             Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>($"{nameof(Mult)}.s", 24, Mult, GetBasicInstructionsWithFunctCode("011000")));
             Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>($"{nameof(Seq)}.s", 58, Seq, GetBasicInstructionsWithFunctCode("111010")));
+            Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>($"{nameof(Sne)}.s", 59, Sne, GetBasicInstructionsWithFunctCode("111011")));
             Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>($"{nameof(Slt)}.s", 42, Slt, GetBasicInstructionsWithFunctCode("101010")));
+            Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>($"{nameof(Slte)}.s", 44, Slte, GetBasicInstructionsWithFunctCode("101100")));
             Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>($"Cvt.i.s", 59, ConvertToInt, GetBasicInstructionsWithFunctCode("111011")));
             Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>($"Cvt.s.i", 43, ConvertToFloat, GetBasicInstructionsWithFunctCode("101011")));
         }
@@ -65,9 +67,19 @@
             passedArgs.Computer.Memory[passedArgs.rd] = HelperFunctions.IntToFloat(passedArgs.Computer.Memory[passedArgs.rs]) < HelperFunctions.IntToFloat(passedArgs.Computer.Memory[passedArgs.rt]) ? 1 : 0;
         }
 
+        static void Slte((Computer Computer, int rs, int rt, int rd, int sa) passedArgs)
+        {
+            passedArgs.Computer.Memory[passedArgs.rd] = HelperFunctions.IntToFloat(passedArgs.Computer.Memory[passedArgs.rs]) <= HelperFunctions.IntToFloat(passedArgs.Computer.Memory[passedArgs.rt]) ? 1 : 0;
+        }
+
         static void Seq((Computer Computer, int rs, int rt, int rd, int sa) passedArgs)
         {
             passedArgs.Computer.Memory[passedArgs.rd] = HelperFunctions.IntToFloat(passedArgs.Computer.Memory[passedArgs.rs]) == HelperFunctions.IntToFloat(passedArgs.Computer.Memory[passedArgs.rt]) ? 1 : 0;
+        }
+
+        static void Sne((Computer Computer, int rs, int rt, int rd, int sa) passedArgs)
+        {
+            passedArgs.Computer.Memory[passedArgs.rd] = HelperFunctions.IntToFloat(passedArgs.Computer.Memory[passedArgs.rs]) != HelperFunctions.IntToFloat(passedArgs.Computer.Memory[passedArgs.rt]) ? 1 : 0;
         }
 
         //TODO: Reading register it doesnt need

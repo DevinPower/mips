@@ -754,7 +754,7 @@
         ASSIGN,
         ADD, SUBTRACT, MULTIPLY, DIVIDE, LESSTHAN, GREATERTHAN, EQUAL,
         ADDASSIGN, SUBTRACTASSIGN, MULTIPLYASSIGN, DIVIDEASSIGN,
-        LOGICALOR, LOGICALAND
+        LOGICALOR, LOGICALAND, LESSTHANEQUAL, GREATERTHANEQUAL, NOTEQUAL
     }
     public class Operator : Expression
     {
@@ -780,7 +780,9 @@
                 $"Seq {Result}, {Op1}, {Op2}", $"Add{FloatCommand} {Op1}, {Op1}, {Op2}",
                 $"Sub{FloatCommand} {Op1}, {Op1}, {Op2}", $"Mult{FloatCommand} {Op1}, {Op1}, {Op2}",
                 $"Div{FloatCommand} {Op1}, {Op1}, {Op2}",
-                $"Or {Result}, {Op1}, {Op2}", $"And {Result}, {Op1}, {Op2}"}[(int)Type];
+                $"Or {Result}, {Op1}, {Op2}", $"And {Result}, {Op1}, {Op2}", $"Slte{FloatCommand} {Result}, {Op1}, {Op2}", 
+                $"Slte{FloatCommand} {Result}, {Op2}, {Op1}",
+                $"Sne {Result}, {Op1}, {Op2}"}[(int)Type];
         }
 
         public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)

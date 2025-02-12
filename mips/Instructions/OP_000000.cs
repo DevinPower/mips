@@ -23,6 +23,7 @@
             Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Or), 37, Or, GetBasicInstructionsWithFunctCode("100101")));
             Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Slt), 42, Slt, GetBasicInstructionsWithFunctCode("101010")));
             Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Sltu), 43, Sltu, GetBasicInstructionsWithFunctCode("101011")));
+            Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Slte), 44, Slte, GetBasicInstructionsWithFunctCode("101100")));
             Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Sub), 34, Sub, GetBasicInstructionsWithFunctCode("100010")));
             Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Subu), 35, Subu, GetBasicInstructionsWithFunctCode("100011")));
             Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Xor), 38, Xor, GetBasicInstructionsWithFunctCode("100110")));
@@ -44,6 +45,7 @@
             Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Jr), 8, Jr, GetRsInstructions("001000")));
             Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Syscall), 12, Syscall, GetNoInstructionsWithFunctCode("001100")));
             Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Seq), 58, Seq, GetBasicInstructionsWithFunctCode("111010")));
+            Operations.Add(new OperationWrapper<(Computer, int, int, int, int)>(nameof(Sne), 59, Sne, GetBasicInstructionsWithFunctCode("111011")));
         }
 
         static void Add((Computer Computer, int rs, int rt, int rd, int sa) passedArgs)
@@ -164,6 +166,16 @@
         static void Sltu((Computer Computer, int rs, int rt, int rd, int sa) passedArgs)
         {
             passedArgs.Computer.Memory[passedArgs.rd] = (uint)passedArgs.Computer.Memory[passedArgs.rs] < (uint)passedArgs.Computer.Memory[passedArgs.rt] ? 1 : 0;
+        }
+
+        static void Slte((Computer Computer, int rs, int rt, int rd, int sa) passedArgs)
+        {
+            passedArgs.Computer.Memory[passedArgs.rd] = passedArgs.Computer.Memory[passedArgs.rs] <= passedArgs.Computer.Memory[passedArgs.rt] ? 1 : 0;
+        }
+
+        static void Sne((Computer Computer, int rs, int rt, int rd, int sa) passedArgs)
+        {
+            passedArgs.Computer.Memory[passedArgs.rd] = passedArgs.Computer.Memory[passedArgs.rs] != passedArgs.Computer.Memory[passedArgs.rt] ? 1 : 0;
         }
 
         static void Sll((Computer Computer, int rs, int rt, int rd, int sa) passedArgs)
