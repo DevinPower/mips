@@ -424,7 +424,7 @@ namespace TideScriptREPL
 
         static string[] Compile(List<Token> tokens)
         {
-            Parser parser = new Parser(tokens);
+            Parser parser = new Parser(tokens, (file) => { return string.Join("\n", File.ReadAllLines(file)); });
             return parser.Parse();
         }
     }

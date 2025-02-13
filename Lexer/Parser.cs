@@ -35,10 +35,12 @@ namespace Lexer
         List<Token> _tokens;
         int current = 0;
         Stack<Expression> ExpressionStack = new Stack<Expression>();
+        Func<string, string> _includeLoader;
 
-        public Parser(List<Token> Tokens)
+        public Parser(List<Token> Tokens, Func<string, string> IncludeLoader)
         {
             _tokens = Tokens.Where((x) => x.TokenType != TokenTypes.Nothing).ToList();
+            _includeLoader = IncludeLoader;
         }
 
         Expression Expression(CompilationMeta CompilationMeta)
@@ -157,10 +159,10 @@ namespace Lexer
 
         ScriptBlock AddInclude(CompilationMeta CompilationMeta)
         {
-            string Contents = string.Join("\n", File.ReadAllLines(Previous().Value));
+            string Contents = _includeLoader(Previous().Value);
             Lexer lexer = new Lexer();
 
-            Parser parser = new Parser(lexer.Lexicate(Contents, false, false));
+            Parser parser = new Parser(lexer.Lexicate(Contents, false, false), _includeLoader);
             var includeResults = parser.ParseCompilationMeta();
 
             CompilationMeta.MergeExternal(includeResults.Item1);
