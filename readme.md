@@ -69,7 +69,6 @@ function print(string Value){
 ```
 
 #### Operators
-Not equals, modulo, less/greater than or equals, increment and decrement operator to be implemented
 ```
 "=", "==", "!=", "<", ">", "<=", ">=",
 "+", "-", "*", "/", "+=", "-=", "*=", "/=",
