@@ -151,10 +151,10 @@ namespace Lexer
         protected List<FunctionMeta> Functions = new List<FunctionMeta>();
         protected List<ClassMeta> Classes = new List<ClassMeta>();
         protected Dictionary<string, string> StringData = new Dictionary<string, string>();
-        public bool[] TempRegisters = new bool[8];
         protected List<CompilationMeta> _childScopes = new List<CompilationMeta>();
         protected VariableMeta[] Arguments = new VariableMeta[4];
         protected int StackOffset = 0;
+        public bool[] TempRegisters = new bool[8];
 
         public CompilationMeta(CompilationMeta Parent, bool CopyTempRegisters)
         {

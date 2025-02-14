@@ -116,6 +116,16 @@ namespace Lexer
                         func.PrependName($"{ClassName}.");
                         functionDefinitions.Add(func);
 
+                        var subex = func.GetSubExpressions();
+                        subex.ForEach((x) =>
+                        {
+                            if (x is Variable classFunctionVariable)
+                            {
+                                classFunctionVariable.IsPropertyInClass = true;
+                                classFunctionVariable.PropertyClassName = ClassName;
+                            }
+                        });
+
                         continue;
                     }
 
@@ -598,6 +608,9 @@ namespace Lexer
 
             FunctionMeta? FunctionData = null;
 
+            bool IsClassFunctionCall = false;
+            AddressPointer ClassAddressPointer = null;
+
             if (VariableMeta != null && CompilationMeta.IsClass(VariableMeta.Type))
             {
                 if (IsMatch(TokenTypes.Separator, "."))
@@ -610,9 +623,11 @@ namespace Lexer
                     if (Peek().Value == "(")
                     {
                         FunctionData = CompilationMeta.GetFunction($"{ClassMeta.Name}.{accessName}");
+                        ClassAddressPointer = new AddressPointer(identifier);
                         Expression originalOffset = identifier.Offset;
                         identifier = new Variable($"{ClassMeta.Name}.{accessName}");
                         identifier.SetOffset(originalOffset);
+                        IsClassFunctionCall = true;
                     }
                     else
                     {
@@ -656,9 +671,18 @@ namespace Lexer
                         throw new Exception("Argument format issue");
                 }
 
-                FunctionCall func = new FunctionCall(identifier.Name, Arguments);
+                if (!IsClassFunctionCall)
+                {
+                    FunctionCall func = new FunctionCall(identifier.Name, Arguments);
 
-                return func;
+                    return func;
+                }
+                else
+                {
+                    ClassFunctionCall func = new ClassFunctionCall(ClassAddressPointer, identifier.Name, Arguments);
+
+                    return func;
+                }
             }
 
             if (IsMatch(TokenTypes.Separator, "("))

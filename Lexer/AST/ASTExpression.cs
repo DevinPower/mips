@@ -1,4 +1,6 @@
-﻿namespace Lexer.AST
+﻿using System.Linq.Expressions;
+
+namespace Lexer.AST
 {
     public class FunctionCallRegisterState
     {
@@ -8,6 +10,7 @@
         {
             List<string> Registers = new List<string>();
             Registers.Add("$ra");
+            Registers.Add("$s0");
 
             _registerState = new GenericRegisterState(Registers.ToArray(), MetaScope);
             _registerState.AddTRegisters(MetaScope);
@@ -130,6 +133,11 @@
         {
             return "unknown";
         }
+
+        public virtual List<Expression> GetSubExpressions()
+        {
+            return new List<Expression>() { this };
+        }
     }
 
     public class Literal : Expression
@@ -215,6 +223,20 @@
             this.ElseIf = ElseIf;
         }
 
+        public override List<Expression> GetSubExpressions()
+        {
+            List<Expression> AllExpressions = new List<Expression>();
+            AllExpressions.AddRange(Body.GetSubExpressions());
+            Conditions.ForEach(x => AllExpressions.AddRange(x.GetSubExpressions()));
+            if (ElseBody != null)
+                AllExpressions.AddRange(ElseBody.GetSubExpressions());
+            if (ElseIf != null)
+                AllExpressions.AddRange(ElseIf.GetSubExpressions());
+            AllExpressions.Add(this);
+
+            return AllExpressions;
+        }
+
         public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
         {
             string EndGuid = System.Guid.NewGuid().ToString().Replace("-", "");
@@ -267,6 +289,16 @@
             this.Body = Body;
         }
 
+        public override List<Expression> GetSubExpressions()
+        {
+            List<Expression> AllExpressions = new List<Expression>();
+            AllExpressions.AddRange(Body.GetSubExpressions());
+            Conditions.ForEach(x => AllExpressions.AddRange(x.GetSubExpressions()));
+            AllExpressions.Add(this);
+
+            return AllExpressions;
+        }
+
         public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
         {
             string StartGuid = System.Guid.NewGuid().ToString().Replace("-", "");
@@ -316,10 +348,24 @@
         public string Name { get; private set; }
         public Expression Offset { get; private set; }
         public Expression PropertyOffset { get; private set; }
+        public bool IsPropertyInClass { get; set; }
+        public string PropertyClassName { get; set; }
 
         public Variable(string Name)
         {
             this.Name = Name;
+        }
+
+        public override List<Expression> GetSubExpressions()
+        {
+            List<Expression> AllExpressions = new List<Expression>();
+            if (Offset != null)
+                AllExpressions.AddRange(Offset.GetSubExpressions());
+            if (PropertyOffset != null)
+                AllExpressions.AddRange(PropertyOffset.GetSubExpressions());
+            AllExpressions.Add(this);
+
+            return AllExpressions;
         }
 
         public bool HasOffset()
@@ -357,6 +403,9 @@
 
         public RegisterResult GetAddress(CompilationMeta ScopeMeta, List<string> Code, bool ForSetting)
         {
+            if (IsPropertyInClass)
+                return GetAddressOfProperty(ScopeMeta, Code);
+
             bool IsPointer = false;
             bool IsLocal = false;
             bool IsClass = false;
@@ -596,6 +645,18 @@
             }
         }
 
+        public RegisterResult GetAddressOfProperty(CompilationMeta ScopeMeta, List<string> Code)
+        {
+            ClassMeta classMeta = ScopeMeta.GetClass(PropertyClassName);
+            int PropertyOffset = classMeta.GetClassDataPosition(Name);
+
+            RegisterResult propertyAddress = new RegisterResult($"$t{ScopeMeta.GetTempRegister()}");
+
+            Code.Add($"Addi {propertyAddress}, $s0, {PropertyOffset}");
+
+            return propertyAddress;
+        }
+
         public RegisterResult GetValue(CompilationMeta ScopeMeta, List<string> Code)
         {
             RegisterResult addressRegister = GetAddress(ScopeMeta, Code, false);
@@ -655,6 +716,15 @@
             this.Arguments = Arguments;
         }
 
+        public override List<Expression> GetSubExpressions()
+        {
+            List<Expression> AllExpressions = new List<Expression>();
+            Arguments.ForEach(a => AllExpressions.AddRange(a.GetSubExpressions()));
+            AllExpressions.Add(this);
+
+            return AllExpressions;
+        }
+
         public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
         {
             RegisterResult[] ArgumentRegisters = Arguments.Select((x) => x.GenerateCode(ScopeMeta, Code)).ToArray();
@@ -696,6 +766,23 @@
         }
     }
 
+    public class ClassFunctionCall : FunctionCall
+    {
+        public AddressPointer ClassPointer { get; private set; }
+        public ClassFunctionCall(AddressPointer ClassPointer, string FunctionName, List<Expression> Arguments) : base(FunctionName, Arguments)
+        {
+            this.ClassPointer = ClassPointer;
+        }
+
+        public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
+        {
+            RegisterResult pointerRegister = ClassPointer.GenerateCode(ScopeMeta, Code);
+            Code.Add($"Move $s0, {pointerRegister}");
+            ScopeMeta.FreeTempRegister(pointerRegister);
+            return base.GenerateCode(ScopeMeta, Code);
+        }
+    }
+
     public class FunctionDefinition : Expression
     {
         public string Name { get; private set; }
@@ -704,6 +791,15 @@
         {
             this.Name = Name;
             this.ScriptBlock = ScriptBlock;
+        }
+
+        public override List<Expression> GetSubExpressions()
+        {
+            List<Expression> AllExpressions = new List<Expression>();
+            AllExpressions.AddRange(ScriptBlock.GetSubExpressions());
+            AllExpressions.Add(this);
+
+            return AllExpressions;
         }
 
         public void PrependName(string Pre)
@@ -731,6 +827,15 @@
         public ReturnStatement(Expression ReturnValue)
         {
             this.ReturnValue = ReturnValue;
+        }
+
+        public override List<Expression> GetSubExpressions()
+        {
+            List<Expression> AllExpressions = new List<Expression>();
+            AllExpressions.AddRange(ReturnValue.GetSubExpressions());
+            AllExpressions.Add(this);
+
+            return AllExpressions;
         }
 
         public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
@@ -762,6 +867,7 @@
         public bool SelfAssign { get;private set; }
         public OperatorTypes Type { get; set; }
         public Expression RHS { get; private set; }
+
         public Operator(Expression LHS, OperatorTypes Type, Expression RHS, bool SelfAssign)
         {
             this.LHS = LHS;
@@ -769,6 +875,17 @@
             this.RHS = RHS;
             this.SelfAssign = SelfAssign;
         }
+
+        public override List<Expression> GetSubExpressions()
+        {
+            List<Expression> AllExpressions = new List<Expression>();
+            AllExpressions.AddRange(LHS.GetSubExpressions());
+            AllExpressions.AddRange(RHS.GetSubExpressions());
+            AllExpressions.Add(this);
+
+            return AllExpressions;
+        }
+
 
         public string GetCommand(RegisterResult Result, RegisterResult Op1, RegisterResult Op2, bool Float)
         {
@@ -857,6 +974,16 @@
             this.RHS = RHS;
         }
 
+        public override List<Expression> GetSubExpressions()
+        {
+            List<Expression> AllExpressions = new List<Expression>();
+            AllExpressions.AddRange(Variable.GetSubExpressions());
+            AllExpressions.AddRange(RHS.GetSubExpressions());
+            AllExpressions.Add(this);
+
+            return AllExpressions;
+        }
+
         public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
         {
             RegisterResult RHSRegister = RHS.GenerateCode(ScopeMeta, Code);
@@ -894,10 +1021,20 @@
         public List<Expression> Expressions { get; private set; }
         public CompilationMeta ScopedMeta { get; private set; }
         List<RegisterResult> _usedRegisters = new List<RegisterResult>();
+
         public ScriptBlock(List<Expression> Expressions, CompilationMeta ScopedMeta)
         {
             this.Expressions = Expressions;
             this.ScopedMeta = ScopedMeta;
+        }
+
+        public override List<Expression> GetSubExpressions()
+        {
+            List<Expression> AllExpressions = new List<Expression>();
+            Expressions.ForEach((x) =>  AllExpressions.AddRange(x.GetSubExpressions()));
+            AllExpressions.Add(this);
+
+            return AllExpressions;
         }
 
         public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
@@ -923,13 +1060,21 @@
         public List<FunctionDefinition> FunctionDefinitions { get; private set; }
         public List<Variable> VariableDefinitions { get; private set; }
 
-
         public ClassDefinition(CompilationMeta ScopedMeta, string Name, List<FunctionDefinition> FunctionDefinitions, List<Variable> VariableDefinitions)
         {
             this.Name = Name;
             this.FunctionDefinitions = FunctionDefinitions;
             this.VariableDefinitions = VariableDefinitions;
             this.ScopedMeta = ScopedMeta;
+        }
+
+        public override List<Expression> GetSubExpressions()
+        {
+            List<Expression> AllExpressions = new List<Expression>();
+            FunctionDefinitions.ForEach((x) => AllExpressions.AddRange(x.GetSubExpressions()));
+            AllExpressions.Add(this);
+
+            return AllExpressions;
         }
 
         public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
