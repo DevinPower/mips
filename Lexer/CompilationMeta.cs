@@ -112,6 +112,17 @@ namespace Lexer
             throw new Exception($"Property {Property} not found on class type {Name}");
         }
 
+        public bool HasProperty(string Property)
+        {
+            foreach (VariableMeta Meta in Properties)
+            {
+                if (Meta.Name == Property)
+                    return true;
+            }
+
+            return false;
+        }
+
         public string GetPropertyType(string Property)
         {
             foreach (VariableMeta Meta in Properties)

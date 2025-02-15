@@ -403,7 +403,7 @@ namespace Lexer.AST
 
         public RegisterResult GetAddress(CompilationMeta ScopeMeta, List<string> Code, bool ForSetting)
         {
-            if (IsPropertyInClass)
+            if (IsPropertyInClass && IsClassProperty(ScopeMeta))
                 return GetAddressOfProperty(ScopeMeta, Code);
 
             bool IsPointer = false;
@@ -643,6 +643,12 @@ namespace Lexer.AST
                 Code.Add($"Li {InitialAddress}, {3 + ArgumentPosition}(0)");
                 return InitialAddress;
             }
+        }
+
+        bool IsClassProperty(CompilationMeta ScopeMeta)
+        {
+            ClassMeta classMeta = ScopeMeta.GetClass(PropertyClassName);
+            return classMeta.HasProperty(Name);
         }
 
         public RegisterResult GetAddressOfProperty(CompilationMeta ScopeMeta, List<string> Code)
