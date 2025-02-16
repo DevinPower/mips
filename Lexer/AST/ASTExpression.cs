@@ -955,6 +955,11 @@ namespace Lexer.AST
                 }
             }
 
+            if (Type == OperatorTypes.LOGICALAND || Type == OperatorTypes.LOGICALOR)
+            {
+                Code.Add($"Sne {resultRegister}, {resultRegister}, $zero");
+            }
+
             ScopeMeta.FreeTempRegister(leftRegister);
             ScopeMeta.FreeTempRegister(rightRegister);
 
