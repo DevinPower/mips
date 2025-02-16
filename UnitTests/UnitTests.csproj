@@ -19,6 +19,16 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Lexer\Lexer.csproj" />
+    <ProjectReference Include="..\mips\mips.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Scripts\ClassTests\GlobalScope.td">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Scripts\stdio.td">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
