@@ -61,7 +61,7 @@ namespace UnitTests
         }
 
         [Test, Combinatorial]
-        public void AllocationTests([Values("GlobalScope.td")]string ExternalFile)
+        public void AllocationTests([Values("GlobalScope.td", "LocalScope.td")]string ExternalFile)
         {
             CompileProgram(File.ReadAllText($"Scripts\\ClassTests\\{ExternalFile}"));
             computer.ProcessFull();

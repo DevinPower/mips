@@ -26,6 +26,9 @@
     <None Update="Scripts\ClassTests\GlobalScope.td">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="Scripts\ClassTests\LocalScope.td">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Scripts\stdio.td">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
