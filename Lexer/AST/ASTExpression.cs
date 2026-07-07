@@ -783,7 +783,14 @@ namespace Lexer.AST
         public override RegisterResult GenerateCode(CompilationMeta ScopeMeta, List<string> Code)
         {
             RegisterResult pointerRegister = ClassPointer.GenerateCode(ScopeMeta, Code);
-            Code.Add($"Move $s0, {pointerRegister}");
+            string varName = ClassPointer.Variable.Name;
+            bool isGlobal = ScopeMeta.GetVariable(varName)?.IsLocal == false;
+
+            if (isGlobal)
+                Code.Add($"Move $s0, {pointerRegister}");
+            else
+                Code.Add($"LB $s0, 0({pointerRegister})");
+
             ScopeMeta.FreeTempRegister(pointerRegister);
             return base.GenerateCode(ScopeMeta, Code);
         }
